@@ -7,6 +7,7 @@ import { initialTrade, makePortCalls, products, routes } from './data.js';
 import './fueltrade.css';
 import DealRoom from './deal-room';
 import FullDeal from './full-deal';
+import CommandDashboard from './command-dashboard';
 
 const money = (v, digits=0) => new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:digits}).format(v);
 const num = (v, digits=1) => new Intl.NumberFormat('en-US',{maximumFractionDigits:digits}).format(v);
@@ -244,6 +245,7 @@ function App({ user }) {
 
         <section className="trade-banner"><div><span>ACTIVE MODEL</span><input value={trade.reference} onChange={e=>update('reference',e.target.value)}/></div><div className="route-line"><div className="port">{(firstPort.locode||firstPort.portName||'ORG').slice(-3).toUpperCase()}</div><span><b>{firstPort.portName||'Origin port'}</b><small>{firstPort.operation?.replaceAll('_',' ')}</small></span><div className="journey"><Anchor size={17}/><i></i><small>{routePlan.length} calls · {trade.days} days</small></div><span><b>{lastPort.portName||'Destination port'}</b><small>{routePlan.length>2?`${routePlan.length-2} intermediate call${routePlan.length===3?'':'s'}`:lastPort.country}</small></span><div className="port destination">{(lastPort.locode||lastPort.portName||'DST').slice(-3).toUpperCase()}</div></div><div className="status"><i></i> Draft model</div></section>
 
+        <CommandDashboard reference={trade.reference} signals={{documents:documents.length,approvals:approvals.filter(item=>item.status==='pending').length,ports:routePlan.length,risk:risk.score,margin:`${num(result.netMarginPct,2)}% margin`,market:marketData?'Market data available':'Open market view',finance:finance.status||'Draft',messages:0}} onNavigate={navigateTo}/>
         <section className="metrics">
           <Metric label="Projected revenue" value={money(result.revenue)} sub={`${num(trade.volumeMt,0)} MT at ${money(trade.sellPrice,0)}`} icon={TrendingUp}/>
           <Metric label="Total landed cost" value={money(result.totalCost)} sub={`${money(result.unitCost,2)} per MT`} icon={Anchor} tone="violet"/>

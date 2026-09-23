@@ -21,3 +21,7 @@ These are models and records; they do not independently verify a counterparty, p
 7. **Deployment operations:** backups, monitoring, migration checks, rate limiting, retention policy, recovery exercises and CI-driven source mirror checks.
 
 Each entry moves to “live” only after an end-to-end deployed test. The `UKDSh2o/fueltrade-os` GitHub repository is the public code checkpoint; never put actual transactions or secrets there.
+
+## Command Centre layout
+
+The Deal Command Centre now offers trader, legal, vessel captain, port operator, finance and administrator layout lenses. Large buttons lead to existing working sections, and Full Deal is permanently visible. The signed-in owner may customize and save a separate layout for each lens in D1. A lens only changes navigation; it never grants access or changes the server-side owner boundary. True participant role assignment and data visibility remain in the permissions milestone above.

@@ -283,3 +283,13 @@ export const dealMessages = sqliteTable("deal_messages", {
 }, (table) => [
   index("idx_deal_messages_owner_reference_created").on(table.ownerId, table.tradeReference, table.createdAt),
 ]);
+
+export const dashboardPreferences = sqliteTable("dashboard_preferences", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  roleKey: text("role_key").notNull(),
+  tilesJson: text("tiles_json").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  index("idx_dashboard_preferences_owner_role").on(table.ownerId, table.roleKey),
+]);
