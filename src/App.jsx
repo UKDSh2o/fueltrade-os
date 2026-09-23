@@ -1,90 +1,62 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, Anchor, BarChart3, Bell, ChevronRight, CircleDollarSign, Droplets, FileCheck2, Gauge, LayoutDashboard, Menu, RefreshCw, Route, Save, Search, Settings, ShieldCheck, TrendingUp, Users, X } from 'lucide-react';
+import { Activity, Anchor, BarChart3, Bell, Bot, ChevronRight, CircleDollarSign, Droplets, FileCheck2, Gauge, LayoutDashboard, Mail, Menu, MessageSquare, Phone, Plus, Route, Save, Search, Settings, ShieldCheck, TrendingUp, Users, Video, X } from 'lucide-react';
 import { calculateTrade, riskLevel } from './calculate.js';
-import { initialTrade, products, routes, scenarios } from './data.js';
+import { initialTrade, routes } from './data.js';
+import { dashboardForRole, roles, communicationChannels } from './workspace.js';
 
-const money = (v, digits=0) => new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:digits}).format(v);
-const num = (v, digits=1) => new Intl.NumberFormat('en-US',{maximumFractionDigits:digits}).format(v);
+const money=v=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(v);
+const tileIcons={economics:CircleDollarSign,market:BarChart3,documents:FileCheck2,'due-diligence':ShieldCheck,logistics:Route,messaging:MessageSquare,tasks:Activity,'full-deal':LayoutDashboard,counterparties:Users,insurance:ShieldCheck,banking:CircleDollarSign,voyage:Anchor,cargo:Droplets,eta:Gauge,port:Anchor,berth:Anchor,discharge:Droplets,inspection:ShieldCheck,storage:LayoutDashboard,contracts:FileCheck2,approvals:FileCheck2,incidents:Bell,lc:FileCheck2,payments:CircleDollarSign};
+const channelIcons={internal:MessageSquare,email:Mail,whatsapp:Phone,telegram:MessageSquare,voice:Phone,video:Video,conference:Users};
 
-function Metric({ label, value, sub, icon:Icon, tone='blue' }) {
-  return <article className="metric"><div className={`metric-icon ${tone}`}><Icon size={19}/></div><div><p>{label}</p><strong>{value}</strong><span>{sub}</span></div></article>;
+function App(){
+ const [trade,setTrade]=useState(()=>{try{return JSON.parse(localStorage.getItem('fueltrade-draft'))||initialTrade}catch{return initialTrade}});
+ const [role,setRole]=useState('trader');
+ const [view,setView]=useState('command');
+ const [mobile,setMobile]=useState(false);
+ const [saved,setSaved]=useState(false);
+ const [messages,setMessages]=useState([{id:1,author:'Trade Copilot',body:'Deal room ready. I will surface deadlines, missing documents and material changes here.',time:'09:12'}]);
+ const [draft,setDraft]=useState('');
+ const result=useMemo(()=>calculateTrade(trade),[trade]);
+ const risk=useMemo(()=>riskLevel(trade,result),[trade,result]);
+ const tiles=useMemo(()=>dashboardForRole(role),[role]);
+ const route=routes[trade.route];
+ const save=()=>{localStorage.setItem('fueltrade-draft',JSON.stringify(trade));setSaved(true);setTimeout(()=>setSaved(false),1400)};
+ const openTile=id=>setView(id==='messaging'?'messaging':id==='full-deal'?'deal':'command');
+ const send=()=>{if(!draft.trim())return;setMessages(x=>[...x,{id:Date.now(),author:'You',body:draft.trim(),time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}]);setDraft('')};
+ useEffect(()=>{document.title=`${trade.reference} · FuelTrade OS`},[trade.reference]);
+
+ return <div className="app-shell">
+  <aside className={mobile?'open':''}>
+   <div className="brand"><div className="brandmark"><Droplets size={22}/></div><div><b>FuelTrade</b><span>OPERATING SYSTEM</span></div><button className="close" onClick={()=>setMobile(false)}><X/></button></div>
+   <nav><small>DEAL OS</small>
+    <a className={view==='command'?'active':''} onClick={()=>setView('command')}><LayoutDashboard/> Command centre</a>
+    <a className={view==='deal'?'active':''} onClick={()=>setView('deal')}><FileCheck2/> Full deal</a>
+    <a className={view==='messaging'?'active':''} onClick={()=>setView('messaging')}><MessageSquare/> Messaging <i>3</i></a>
+    <small>INTELLIGENCE</small><a><BarChart3/> Market intelligence</a><a><Route/> Logistics</a><a><ShieldCheck/> Risk & DD</a>
+   </nav>
+   <div className="system"><span><i></i> Systems operational</span><small>Role-aware workspace</small></div>
+   <div className="profile"><div>{roles[role].label.slice(0,2).toUpperCase()}</div><p><b>{roles[role].label}</b><span>{trade.reference}</span></p><ChevronRight size={16}/></div>
+  </aside>
+  <main>
+   <header><button className="menu" onClick={()=>setMobile(true)}><Menu/></button><div className="search"><Search size={18}/><span>Search this deal, messages or documents…</span></div><div className="head-actions"><select className="role-select" value={role} onChange={e=>{setRole(e.target.value);setView('command')}}>{Object.entries(roles).map(([id,r])=><option key={id} value={id}>{r.label}</option>)}</select><button><Bell size={19}/><i></i></button></div></header>
+   <div className="content">
+    <section className="deal-top"><div><p className="eyebrow">ACTIVE DEAL · {trade.incoterm}</p><h1>{trade.reference}</h1><p>{trade.product} · {trade.volumeMt.toLocaleString()} MT · {trade.route}</p></div><div className="title-actions"><button className="secondary" onClick={()=>setView('messaging')}><MessageSquare size={16}/> Deal room</button><button className="primary" onClick={save}><Save size={16}/>{saved?'Saved':'Save deal'}</button></div></section>
+    <section className="metrics">
+     <Metric label="Revenue" value={money(result.revenue)} sub="Projected trade value" icon={TrendingUp}/>
+     <Metric label="Net profit" value={money(result.netProfit)} sub={result.netMarginPct.toFixed(2)+'% net margin'} icon={CircleDollarSign}/>
+     <Metric label="Risk exposure" value={risk.score+' / 100'} sub={risk.label+' risk'} icon={Gauge}/>
+     <Metric label="Voyage" value={trade.days+' days'} sub={route.destination} icon={Anchor}/>
+    </section>
+
+    {view==='command'&&<><div className="section-head"><div><h2>{roles[role].label} command centre</h2><p>Your agreed essentials. Add more permitted modules as needed.</p></div><button className="secondary"><Plus size={15}/> Configure dashboard</button></div><section className="tile-grid">{tiles.map(t=>{const Icon=tileIcons[t.id]||LayoutDashboard;return <button className={'deal-tile '+(t.id==='full-deal'?'full':'')} key={t.id} onClick={()=>openTile(t.id)}><span className="tile-icon"><Icon/></span><div><b>{t.label}</b><small>{t.description}</small></div><ChevronRight/></button>})}</section></>}
+
+    {view==='messaging'&&<section className="workspace-panel messaging-view"><div className="section-head"><div><p className="eyebrow">DEAL ROOM</p><h2>Unified communications</h2><p>Internal collaboration with external channel adapters linked to this deal.</p></div><button className="primary"><Bot size={16}/> Ask Copilot</button></div><div className="channel-strip">{communicationChannels.map(c=>{const Icon=channelIcons[c.id]||MessageSquare;return <button key={c.id} className={c.id==='internal'?'selected':''}><Icon size={16}/><span>{c.label}</span><small>{c.status==='ready'?'LIVE':'CONNECT'}</small></button>})}</div><div className="chat-layout"><div className="thread"><div className="thread-title"><b># deal-room</b><span>{trade.reference} · authorized participants only</span></div><div className="messages">{messages.map(m=><div className="message" key={m.id}><div>{m.author==='Trade Copilot'?'AI':'DS'}</div><p><b>{m.author}<small>{m.time}</small></b><span>{m.body}</span></p></div>)}</div><div className="composer"><input value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()} placeholder="Message the deal team or @Copilot…"/><button onClick={send}>Send</button></div></div><aside className="deal-context"><h3>Deal context</h3><p><span>Route</span><b>{trade.route}</b></p><p><span>Product</span><b>{trade.product}</b></p><p><span>Volume</span><b>{trade.volumeMt.toLocaleString()} MT</b></p><p><span>Risk</span><b>{risk.label}</b></p><div className="ai-note"><Bot/><b>Copilot watching</b><span>Deadlines · documents · approvals · material changes</span></div></aside></div></section>}
+
+    {view==='deal'&&<section className="workspace-panel full-deal-view"><div className="section-head"><div><p className="eyebrow">FULL DEAL</p><h2>Authorized transaction workspace</h2><p>Commercial, operational and communications context in one auditable record.</p></div></div><div className="deal-summary-grid"><div><span>Commercial</span><b>{trade.product}</b><p>{trade.volumeMt.toLocaleString()} MT · {trade.incoterm}</p></div><div><span>Economics</span><b>{money(result.netProfit)}</b><p>{result.netMarginPct.toFixed(2)}% net margin</p></div><div><span>Logistics</span><b>{trade.route}</b><p>{trade.days} day modeled voyage</p></div><div><span>Risk</span><b>{risk.score}/100</b><p>{risk.label} profile</p></div></div><div className="timeline"><h3>Deal timeline</h3><div><i></i><p><b>Deal workspace initialized</b><span>Commercial model and role permissions available.</span></p></div><div><i></i><p><b>Communications room available</b><span>Internal Deal Chat enabled; external adapters ready for connection.</span></p></div><div><i></i><p><b>Integration phase</b><span>Email, realtime calling and approved external channels are next.</span></p></div></div></section>}
+   </div>
+  </main>
+ </div>
 }
 
-function Field({ label, value, onChange, suffix, type='number', children }) {
-  return <label className="field"><span>{label}</span><div className="input-wrap">{children || <input type={type} value={value} onChange={e=>onChange(type==='number' ? Number(e.target.value) : e.target.value)}/>} {suffix&&<em>{suffix}</em>}</div></label>;
-}
-
-function App() {
-  const [trade,setTrade] = useState(()=>{ try{return JSON.parse(localStorage.getItem('fueltrade-draft'))||initialTrade}catch{return initialTrade} });
-  const [mobile,setMobile] = useState(false);
-  const [saved,setSaved] = useState(false);
-  const result = useMemo(()=>calculateTrade(trade),[trade]);
-  const risk = useMemo(()=>riskLevel(trade,result),[trade,result]);
-  const route = routes[trade.route];
-  const update = (key,value)=>setTrade(t=>({...t,[key]:value}));
-  const selectRoute = value=>setTrade(t=>({...t,route:value,freight:routes[value].freight}));
-  const save = ()=>{ localStorage.setItem('fueltrade-draft',JSON.stringify(trade)); setSaved(true); setTimeout(()=>setSaved(false),1600); };
-  useEffect(()=>{ document.title=`${trade.reference} · FuelTrade OS`; },[trade.reference]);
-
-  return <div className="app-shell">
-    <aside className={mobile?'open':''}>
-      <div className="brand"><div className="brandmark"><Droplets size={22}/></div><div><b>FuelTrade</b><span>OPERATING SYSTEM</span></div><button className="close" onClick={()=>setMobile(false)}><X/></button></div>
-      <nav>
-        <small>WORKSPACE</small>
-        <a className="active"><LayoutDashboard/> Command centre</a><a><CircleDollarSign/> Trade calculator</a><a><BarChart3/> Market intelligence</a><a><Route/> Logistics</a>
-        <small>OPERATIONS</small>
-        <a><FileCheck2/> Documents <i>8</i></a><a><ShieldCheck/> Due diligence</a><a><Users/> Counterparties</a><a><Settings/> Settings</a>
-      </nav>
-      <div className="system"><span><i></i> Systems operational</span><small>Data layer ready</small></div>
-      <div className="profile"><div>DS</div><p><b>Trading Principal</b><span>Administrator</span></p><ChevronRight size={16}/></div>
-    </aside>
-    <main>
-      <header><button className="menu" onClick={()=>setMobile(true)}><Menu/></button><div className="search"><Search size={18}/><span>Search trades, vessels or documents…</span><kbd>⌘ K</kbd></div><div className="head-actions"><button><Bell size={19}/><i></i></button><span className="market"><i></i> Market feeds ready</span></div></header>
-      <div className="content">
-        <div className="title-row"><div><p className="eyebrow">COMMAND CENTRE</p><h1>Trade intelligence</h1><p>Model landed economics, compare exposure and make faster decisions.</p></div><div className="title-actions"><button className="secondary"><RefreshCw size={16}/> Reset</button><button className="primary" onClick={save}><Save size={16}/>{saved?'Saved':'Save scenario'}</button></div></div>
-
-        <section className="trade-banner"><div><span>ACTIVE MODEL</span><input value={trade.reference} onChange={e=>update('reference',e.target.value)}/></div><div className="route-line"><div className="port">FUJ</div><span><b>{trade.route.split(' → ')[0]}</b><small>Load port</small></span><div className="journey"><Anchor size={17}/><i></i><small>{trade.days} days</small></div><span><b>{trade.route.split(' → ')[1]}</b><small>{route.destination}</small></span><div className="port destination">{route.destination.slice(0,3).toUpperCase()}</div></div><div className="status"><i></i> Draft model</div></section>
-
-        <section className="metrics">
-          <Metric label="Projected revenue" value={money(result.revenue)} sub={`${num(trade.volumeMt,0)} MT at ${money(trade.sellPrice,0)}`} icon={TrendingUp}/>
-          <Metric label="Total landed cost" value={money(result.totalCost)} sub={`${money(result.unitCost,2)} per MT`} icon={Anchor} tone="violet"/>
-          <Metric label="Net trade profit" value={money(result.netProfit)} sub={`${num(result.netMarginPct,2)}% net margin`} icon={CircleDollarSign} tone="green"/>
-          <Metric label="Risk exposure" value={`${risk.score} / 100`} sub={`${risk.label} risk profile`} icon={Gauge} tone="amber"/>
-        </section>
-
-        <div className="grid">
-          <section className="panel model"><div className="panel-head"><div><h2>Trade model</h2><p>Adjust commercial and operational assumptions</p></div><span className="live-dot">AUTO-CALCULATED</span></div>
-            <div className="form-grid">
-              <Field label="Product"><select value={trade.product} onChange={e=>update('product',e.target.value)}>{products.map(x=><option key={x}>{x}</option>)}</select></Field>
-              <Field label="Trade volume" value={trade.volumeMt} onChange={v=>update('volumeMt',v)} suffix="MT"/>
-              <Field label="Trade route"><select value={trade.route} onChange={e=>selectRoute(e.target.value)}>{Object.keys(routes).map(x=><option key={x}>{x}</option>)}</select></Field>
-              <Field label="Incoterm"><select value={trade.incoterm} onChange={e=>update('incoterm',e.target.value)}>{['CIF','CFR','FOB','DAP'].map(x=><option key={x}>{x}</option>)}</select></Field>
-              <Field label="Purchase price" value={trade.buyPrice} onChange={v=>update('buyPrice',v)} suffix="$/MT"/>
-              <Field label="Sale price" value={trade.sellPrice} onChange={v=>update('sellPrice',v)} suffix="$/MT"/>
-            </div>
-            <div className="cost-title"><h3>Cost stack</h3><span>Per metric tonne unless marked %</span></div>
-            <div className="cost-grid">
-              {[['freight','Freight','$/MT'],['insurancePct','Insurance','%'],['inspection','Inspection','$/MT'],['port','Port charges','$/MT'],['storage','Storage','$/MT'],['trucking','Inland logistics','$/MT'],['legal','Legal & DD','$/MT'],['financePct','Finance rate','%'],['contingencyPct','Contingency','%']].map(([key,label,suffix])=><Field key={key} label={label} value={trade[key]} onChange={v=>update(key,v)} suffix={suffix}/>) }
-            </div>
-          </section>
-
-          <section className="panel economics"><div className="panel-head"><div><h2>Deal economics</h2><p>Live profitability analysis</p></div><Activity size={20}/></div>
-            <div className="hero-profit"><span>NET PROFIT</span><strong className={result.netProfit<0?'negative':''}>{money(result.netProfit)}</strong><p><b>{num(result.netMarginPct,2)}%</b> of gross revenue</p></div>
-            <div className="margin-bar"><i style={{width:`${Math.max(0,Math.min(100,result.netMarginPct*5))}%`}}></i></div>
-            <div className="economics-list">
-              <div><span>Gross revenue</span><b>{money(result.revenue)}</b></div><div><span>Product purchase</span><b>− {money(result.buyValue)}</b></div><div><span>Operating costs</span><b>− {money(result.operatingCosts)}</b></div><div><span>Insurance & finance</span><b>− {money(result.insurance+result.finance)}</b></div><div><span>Risk contingency</span><b>− {money(result.contingency)}</b></div>
-            </div>
-            <div className="mini-stats"><div><span>ROI</span><b>{num(result.roiPct,2)}%</b></div><div><span>Unit margin</span><b>{money(result.unitMargin,2)}</b></div><div><span>Break-even</span><b>{money(result.breakEven,2)}</b></div><div><span>Capital required</span><b>{money(result.workingCapital)}</b></div></div>
-            <div className="fx"><div><span>LOCAL CURRENCY VIEW</span><b>{route.currency} {num(result.netProfit*route.fx,0)}</b></div><small>Indicative FX: 1 USD = {route.fx} {route.currency}</small></div>
-          </section>
-        </div>
-
-        <section className="panel scenarios"><div className="panel-head"><div><h2>Sourcing scenarios</h2><p>Compare approved acquisition routes using the current model</p></div><button className="text-button">View all <ChevronRight size={15}/></button></div>
-          <div className="table"><div className="tr th"><span>Source</span><span>Buy price</span><span>Landed cost</span><span>Net profit</span><span>Margin</span><span>Confidence</span></div>{scenarios.map((s,i)=>{const r=calculateTrade({...trade,buyPrice:s.buyPrice});return <div className={`tr ${i===1?'selected':''}`} key={s.name}><span><i className="source-icon">{i===0?'R':i===1?'C':'T'}</i><b>{s.name}</b><small>{s.leadDays}-day lead</small></span><span>{money(s.buyPrice,0)}<small>per MT</small></span><span>{money(r.unitCost,2)}<small>per MT</small></span><span className="positive">{money(r.netProfit)}<small>total</small></span><span><b>{num(r.netMarginPct,2)}%</b><small>net</small></span><span><i className="confidence"><em style={{width:`${s.confidence}%`}}></em></i><small>{s.confidence}% verified</small></span></div>})}</div>
-        </section>
-      </div>
-    </main>
-  </div>;
-}
-
+function Metric({label,value,sub,icon:Icon}){return <article className="metric"><div className="metric-icon"><Icon size={19}/></div><div><p>{label}</p><strong>{value}</strong><span>{sub}</span></div></article>}
 export default App;
