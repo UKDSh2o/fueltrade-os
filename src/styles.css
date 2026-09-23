@@ -8,3 +8,4 @@
 @media(max-width:1100px){.tile-grid{grid-template-columns:repeat(3,1fr)}.deal-summary-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:760px){.deal-top{align-items:flex-start}.tile-grid{grid-template-columns:1fr 1fr}.chat-layout{grid-template-columns:1fr}.deal-context{display:none}.role-select{max-width:125px}.deal-top .secondary{display:none}}
 @media(max-width:480px){.tile-grid,.deal-summary-grid{grid-template-columns:1fr}}
+.auth-screen{min-height:100vh;display:grid;place-items:center;background:#f1f5f9;color:#17253b}.auth-screen form{width:min(400px,calc(100vw - 32px));padding:32px;background:white;border-radius:16px;box-shadow:0 12px 40px #15243b18;display:grid;gap:16px}.auth-screen label{display:grid;gap:6px;font-size:14px}.auth-screen input{padding:12px;border:1px solid #bcc9d8;border-radius:8px}.auth-screen button{justify-content:center}.content [role=alert],.auth-screen [role=alert]{color:#a72727}
