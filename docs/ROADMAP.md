@@ -9,6 +9,7 @@
 - Role-scoped Full Deal summary, accepted participant invitations, route-level RBAC, buyer/seller margin redaction, notification rules, audit entries and Sites-managed sign-in.
 - Audited internal conversations, safe email sandbox, Chatwoot transport adapter for email/WhatsApp/Telegram and Novu notification adapter. External delivery remains configuration-gated.
 - Reviewable KYB/UBO/sanctions/vessel/bank/insurance evidence records, with an optional OpenSanctions or self-hosted yente matching adapter. Automated matches never make the final disposition.
+- Approval-gated finance status and payment-instruction records. Beneficiary account references are fingerprinted then discarded, bank-detail changes need two distinct approvers, and instructions are explicitly records rather than transfers.
 
 These are models and records; they do not independently verify a counterparty, policy, vessel, price, payment or document.
 
@@ -16,7 +17,7 @@ These are models and records; they do not independently verify a counterparty, p
 
 1. **Collaboration activation:** grant explicit Sites access to approved participants, complete a two-account deployment test and add per-user notification read state. Never use public access as an invitation shortcut.
 2. **Document and DD depth:** templates, document retention, insurer/Q88 validation, periodic re-screening and deployment testing against a lawfully licensed OpenSanctions/yente dataset.
-3. **Banking and logistics:** approval-gated LC/payment instructions, bank-detail change dual approval, insurance verification, ship-tracking adapter and port handoff records. Never represent recorded amounts as completed transfers.
+3. **Banking and logistics:** connect approved instructions to bank execution evidence, add insurance verification, a ship-tracking adapter and port handoff records. Never represent recorded amounts as completed transfers.
 4. **Communications:** activate a patched self-hosted Chatwoot/Novu stack, then add attachment/search/mention UX and LiveKit self-hosted voice/video. External account connection needs owner authorization and provider credentials.
 5. **Market intelligence and AI:** lawful data-source agreements, quote provenance and freshness, role-scoped Copilot retrieval, audit and human approval for consequential automation. Licensed price feeds need subscription rights.
 6. **Deployment operations:** backups, monitoring, migration checks, rate limiting, retention policy, recovery exercises and CI-driven source mirror checks.

@@ -153,6 +153,56 @@ export const tradeFinance = sqliteTable("trade_finance", {
   index("idx_trade_finance_owner_reference").on(table.ownerId, table.tradeReference),
 ]);
 
+export const bankDetailChanges = sqliteTable("bank_detail_changes", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  tradeReference: text("trade_reference").notNull(),
+  beneficiaryName: text("beneficiary_name").notNull(),
+  bankName: text("bank_name").notNull(),
+  swiftBic: text("swift_bic").notNull().default(""),
+  maskedAccount: text("masked_account").notNull(),
+  accountFingerprint: text("account_fingerprint").notNull(),
+  reason: text("reason").notNull().default(""),
+  status: text("status").notNull().default("pending"),
+  firstApprovedBy: text("first_approved_by"),
+  firstApprovedAt: integer("first_approved_at"),
+  secondApprovedBy: text("second_approved_by"),
+  secondApprovedAt: integer("second_approved_at"),
+  rejectedBy: text("rejected_by"),
+  rejectedAt: integer("rejected_at"),
+  createdBy: text("created_by").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, (table) => [
+  index("idx_bank_detail_changes_owner_trade_status").on(table.ownerId, table.tradeReference, table.status),
+]);
+
+export const paymentInstructions = sqliteTable("payment_instructions", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  tradeReference: text("trade_reference").notNull(),
+  bankChangeId: text("bank_change_id"),
+  instructionType: text("instruction_type").notNull().default("payment"),
+  beneficiaryName: text("beneficiary_name").notNull(),
+  bankName: text("bank_name").notNull(),
+  maskedAccount: text("masked_account").notNull(),
+  currency: text("currency").notNull().default("USD"),
+  amountCents: integer("amount_cents").notNull().default(0),
+  purpose: text("purpose").notNull().default(""),
+  status: text("status").notNull().default("draft"),
+  createdBy: text("created_by").notNull(),
+  submittedBy: text("submitted_by"),
+  submittedAt: integer("submitted_at"),
+  approvedBy: text("approved_by"),
+  approvedAt: integer("approved_at"),
+  cancelledBy: text("cancelled_by"),
+  cancelledAt: integer("cancelled_at"),
+  updatedAt: integer("updated_at").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, (table) => [
+  index("idx_payment_instructions_owner_trade_status").on(table.ownerId, table.tradeReference, table.status),
+]);
+
 export const insurancePolicies = sqliteTable("insurance_policies", {
   id: text("id").primaryKey(),
   ownerId: text("owner_id").notNull(),
