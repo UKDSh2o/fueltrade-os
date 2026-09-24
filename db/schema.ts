@@ -55,9 +55,44 @@ export const documents = sqliteTable("documents", {
   sizeBytes: integer("size_bytes").notNull(),
   objectKey: text("object_key").notNull(),
   status: text("status").notNull().default("received"),
+  groupId: text("group_id"),
+  versionNumber: integer("version_number").notNull().default(1),
+  supersedesId: text("supersedes_id"),
+  sha256: text("sha256").notNull().default(""),
+  uploadedBy: text("uploaded_by").notNull().default(""),
+  reviewedBy: text("reviewed_by"),
+  reviewedAt: integer("reviewed_at"),
+  reviewNote: text("review_note").notNull().default(""),
   createdAt: integer("created_at").notNull(),
 }, (table) => [
   index("idx_documents_owner_trade").on(table.ownerId, table.tradeReference),
+  index("idx_documents_owner_trade_group_version").on(table.ownerId, table.tradeReference, table.groupId, table.versionNumber),
+]);
+
+export const dueDiligenceChecks = sqliteTable("due_diligence_checks", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  tradeReference: text("trade_reference").notNull(),
+  counterpartyId: text("counterparty_id"),
+  checkType: text("check_type").notNull(),
+  provider: text("provider").notNull().default("manual"),
+  subjectName: text("subject_name").notNull(),
+  subjectCountry: text("subject_country").notNull().default(""),
+  status: text("status").notNull().default("pending_review"),
+  riskLevel: text("risk_level").notNull().default("unrated"),
+  queryJson: text("query_json").notNull().default("{}"),
+  resultJson: text("result_json").notNull().default("{}"),
+  evidenceUrl: text("evidence_url"),
+  checkedAt: integer("checked_at").notNull(),
+  expiresAt: integer("expires_at"),
+  reviewedBy: text("reviewed_by"),
+  reviewerEmail: text("reviewer_email"),
+  reviewNote: text("review_note").notNull().default(""),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  index("idx_due_diligence_owner_trade_checked").on(table.ownerId, table.tradeReference, table.checkedAt),
+  index("idx_due_diligence_owner_counterparty_type").on(table.ownerId, table.counterpartyId, table.checkType),
 ]);
 
 export const tradeWorkflows = sqliteTable("trade_workflows", {
