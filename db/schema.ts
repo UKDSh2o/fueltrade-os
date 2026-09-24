@@ -164,16 +164,20 @@ export const tradeMembers = sqliteTable("trade_members", {
   ownerId: text("owner_id").notNull(),
   tradeReference: text("trade_reference").notNull(),
   email: text("email").notNull(),
+  memberUserId: text("member_user_id"),
   name: text("name").notNull().default(""),
   organization: text("organization").notNull().default(""),
   role: text("role").notNull(),
   permissionsJson: text("permissions_json").notNull(),
   marginScope: text("margin_scope").notNull().default("none"),
   status: text("status").notNull().default("pending"),
+  acceptedAt: integer("accepted_at"),
   updatedAt: integer("updated_at").notNull(),
   createdAt: integer("created_at").notNull(),
 }, (table) => [
   index("idx_trade_members_owner_reference").on(table.ownerId, table.tradeReference),
+  index("idx_trade_members_user_reference_status").on(table.memberUserId, table.tradeReference, table.status),
+  index("idx_trade_members_email_status").on(table.email, table.status),
 ]);
 
 export const tradeApprovals = sqliteTable("trade_approvals", {
@@ -282,6 +286,59 @@ export const dealMessages = sqliteTable("deal_messages", {
   createdAt: integer("created_at").notNull(),
 }, (table) => [
   index("idx_deal_messages_owner_reference_created").on(table.ownerId, table.tradeReference, table.createdAt),
+]);
+
+export const communicationConnections = sqliteTable("communication_connections", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  provider: text("provider").notNull(),
+  displayName: text("display_name").notNull(),
+  address: text("address").notNull().default(""),
+  endpoint: text("endpoint").notNull().default(""),
+  status: text("status").notNull().default("needs_authorization"),
+  capabilitiesJson: text("capabilities_json").notNull(),
+  lastSyncAt: integer("last_sync_at"),
+  updatedAt: integer("updated_at").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, (table) => [
+  index("idx_communication_connections_owner_provider").on(table.ownerId, table.provider),
+]);
+
+export const communicationThreads = sqliteTable("communication_threads", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  tradeReference: text("trade_reference").notNull().default(""),
+  channel: text("channel").notNull(),
+  threadKind: text("thread_kind").notNull().default("group"),
+  externalId: text("external_id").notNull().default(""),
+  subject: text("subject").notNull(),
+  participantsJson: text("participants_json").notNull(),
+  priority: text("priority").notNull().default("normal"),
+  priorityReason: text("priority_reason").notNull().default(""),
+  status: text("status").notNull().default("open"),
+  summary: text("summary").notNull().default(""),
+  lastMessageAt: integer("last_message_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, (table) => [
+  index("idx_communication_threads_owner_trade_updated").on(table.ownerId, table.tradeReference, table.updatedAt),
+]);
+
+export const communicationMessages = sqliteTable("communication_messages", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  threadId: text("thread_id").notNull(),
+  externalId: text("external_id").notNull().default(""),
+  direction: text("direction").notNull(),
+  author: text("author").notNull(),
+  body: text("body").notNull(),
+  aiPriority: text("ai_priority").notNull().default("normal"),
+  aiReason: text("ai_reason").notNull().default(""),
+  draftReply: text("draft_reply").notNull().default(""),
+  sentAt: integer("sent_at").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, (table) => [
+  index("idx_communication_messages_owner_thread_sent").on(table.ownerId, table.threadId, table.sentAt),
 ]);
 
 export const dashboardPreferences = sqliteTable("dashboard_preferences", {

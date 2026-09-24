@@ -5,7 +5,7 @@
 This repository mirrors the source that powers the live FuelTrade OS Site. Make product changes here, then apply the same commit to the Sites source checkout and deploy its matching build. Sites retains a deployment source repository because its publishing service requires one; it is a deployment mirror, not an independent app. A commit is complete only when both source trees match and the Sites version is published. Never run the legacy `server/app.js` or deploy the legacy Vite bundle.
 
 - UI: `app/dashboard.jsx`, `app/full-deal.jsx`, `app/deal-room.jsx`, and CSS.
-- Server routes: `app/api/**` in the Sites Worker. Reads and writes use the authenticated ChatGPT user ID and owner-scoped D1 statements.
+- Server routes: `app/api/**` in the Sites Worker. Reads and writes resolve the authenticated user to an owner or accepted trade membership before using owner-scoped D1 statements.
 - Identity: `app/chatgpt-auth.ts` reads Sites-provided signed-in identity. Do not substitute client-selected roles or duplicate password accounts.
 - Storage: `db/schema.ts` and incremental `drizzle/*.sql` migrations for D1; R2 for document bytes. Production migrations are applied during Sites publication. For local preview run the pending SQL files in order using `node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/NNNN_name.sql`.
 - Approval policy: `lib/deal-events.js`. Urgency is recorded in the deal-room audit; it does not send external messages or authorize payments.
@@ -22,6 +22,8 @@ This repository mirrors the source that powers the live FuelTrade OS Site. Make 
 
 ## Security boundary
 
-Currently the live Site is owner-only. `trade_members` rows are proposed participant records; they do not create accounts, invite users, or authorize access. Each deployed route checks the signed-in user and scopes records to owner ID. The Full Deal view shows owner data only. Before wider access, add verified invitations, server-side permission checks for every route, margin-specific response filtering, and an access-policy change for approved members. Do not change the site to public to work around invitations.
+The live Site access policy is still owner-only. Inside the application, `trade_members` now implements verified invitation acceptance: the signed-in email must match one pending invitation and the record is then bound to the stable Sites user ID. Every deal route resolves the owner or active membership, enforces module permission levels, and keeps database and object-storage access scoped to the owning trade. Trade responses redact buyer-side, seller-side and total economics according to the assigned margin scope. Ambiguous invitations fail closed.
 
-Email, WhatsApp, Telegram, video, banks and AI are adapters to add server-side with secrets stored in Sites runtime settings. A UI label or manually entered record does not imply a live provider connection or a completed verification.
+Wider collaboration therefore requires two separate owner actions: grant the person access in Sites and create their trade invitation in FuelTrade. The application never makes the Site public as an invitation shortcut. Participant read-state for shared notifications remains disabled until a per-user read model is introduced.
+
+Email, WhatsApp, Telegram, video, banks and AI remain server-side adapters with secrets stored in Sites runtime settings. Chatwoot and Novu connectors are implemented but remain inactive until an administrator supplies a current patched deployment and credentials. A UI label or manually entered record never implies a live provider connection, completed transfer or completed verification.

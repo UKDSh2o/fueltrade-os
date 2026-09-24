@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { getChatGPTUser } from "../../chatgpt-auth";
 import { classifyUrgency } from "../../../lib/deal-events.js";
+import { requireTradePermission } from "../../access-control";
 
 const respond = (value: unknown, status = 200) => Response.json(value, { status, headers: { "Cache-Control": "no-store" } });
 const validReference = (value: string) => /^[\w-]{3,64}$/.test(value);
@@ -11,10 +12,10 @@ export async function GET(request: Request) {
   if (!env.DB) return respond({ error: "Deal room unavailable" }, 503);
   const reference = new URL(request.url).searchParams.get("reference") || "";
   if (!validReference(reference)) return respond({ error: "Invalid trade reference" }, 400);
-  const trade = await env.DB.prepare("SELECT id FROM trades WHERE owner_id = ? AND reference = ?").bind(user.userId, reference).first();
-  if (!trade) return respond({ error: "Save this trade to start its deal room" }, 404);
-  const rows = await env.DB.prepare("SELECT id, actor_email AS author, body, created_at AS createdAt FROM deal_messages WHERE owner_id = ? AND trade_reference = ? ORDER BY created_at DESC LIMIT 100").bind(user.userId, reference).all();
-  return respond({ messages: rows.results.reverse() });
+  const access = await requireTradePermission(env.DB, user, reference, "comments", "view");
+  if (!access) return respond({ error: "Deal-room access denied" }, 403);
+  const rows = await env.DB.prepare("SELECT id, actor_email AS author, body, created_at AS createdAt FROM deal_messages WHERE owner_id = ? AND trade_reference = ? ORDER BY created_at DESC LIMIT 100").bind(access.ownerId, reference).all();
+  return respond({ messages: rows.results.reverse(), access: { role: access.role, isOwner: access.isOwner } });
 }
 
 export async function POST(request: Request) {
@@ -29,12 +30,12 @@ export async function POST(request: Request) {
   const reference = value?.reference;
   const message = value?.body;
   if (typeof reference !== "string" || !validReference(reference) || typeof message !== "string" || !message.trim() || message.length > 4000) return respond({ error: "Invalid message" }, 400);
-  const trade = await env.DB.prepare("SELECT id FROM trades WHERE owner_id = ? AND reference = ?").bind(user.userId, reference).first();
-  if (!trade) return respond({ error: "Trade not found" }, 404);
+  const access = await requireTradePermission(env.DB, user, reference, "comments", "edit");
+  if (!access) return respond({ error: "Deal-room posting permission required" }, 403);
   const id = crypto.randomUUID(), now = Date.now();
   await env.DB.batch([
-    env.DB.prepare("INSERT INTO deal_messages (id, owner_id, trade_reference, actor_id, actor_email, body, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(id, user.userId, reference, user.userId, user.email, message.trim(), now),
-    env.DB.prepare("INSERT INTO audit_events (id, owner_id, trade_reference, actor_id, actor_email, action, subject_type, subject_id, detail_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(crypto.randomUUID(), user.userId, reference, user.userId, user.email, "message_created", "deal_message", id, JSON.stringify({ urgency: classifyUrgency(message.trim()) }), now)
+    env.DB.prepare("INSERT INTO deal_messages (id, owner_id, trade_reference, actor_id, actor_email, body, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(id, access.ownerId, reference, user.userId, user.email, message.trim(), now),
+    env.DB.prepare("INSERT INTO audit_events (id, owner_id, trade_reference, actor_id, actor_email, action, subject_type, subject_id, detail_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(crypto.randomUUID(), access.ownerId, reference, user.userId, user.email, "message_created", "deal_message", id, JSON.stringify({ urgency: classifyUrgency(message.trim()), role: access.role }), now)
   ]);
   return respond({ id, createdAt: now }, 201);
 }
