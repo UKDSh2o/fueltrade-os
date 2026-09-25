@@ -24,7 +24,7 @@ This repository mirrors the source that powers the live FuelTrade OS Site. Make 
 
 The live Site access policy is still owner-only. Inside the application, `trade_members` now implements verified invitation acceptance: the signed-in email must match one pending invitation and the record is then bound to the stable Sites user ID. Every deal route resolves the owner or active membership, enforces module permission levels, and keeps database and object-storage access scoped to the owning trade. Trade responses redact buyer-side, seller-side and total economics according to the assigned margin scope. Ambiguous invitations fail closed.
 
-Wider collaboration therefore requires two separate owner actions: grant the person access in Sites and create their trade invitation in FuelTrade. The application never makes the Site public as an invitation shortcut. Participant read-state for shared notifications remains disabled until a per-user read model is introduced.
+Wider collaboration therefore requires two separate owner actions: grant the person access in Sites and create their trade invitation in FuelTrade. The application never makes the Site public as an invitation shortcut. Shared alert definitions remain owner-controlled, while `notification_read_states` keeps each signed-in participant's read/unread state independent.
 
 Email, WhatsApp, Telegram, video, banks and AI remain server-side adapters with secrets stored in Sites runtime settings. Chatwoot and Novu connectors are implemented but remain inactive until an administrator supplies a current patched deployment and credentials. A UI label or manually entered record never implies a live provider connection, completed transfer or completed verification.
 

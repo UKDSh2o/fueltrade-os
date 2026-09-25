@@ -1,14 +1,15 @@
 import { env } from "cloudflare:workers";
 import { getChatGPTUser } from "../../chatgpt-auth";
 import { requireTradePermission } from "../../access-control";
+import { notificationReadStateId } from "../../../lib/notification-controls.js";
 
 const respond = (body: unknown, status = 200) => Response.json(body, { status });
 const clean = (value: unknown, max = 180) => String(value ?? "").trim().slice(0, max);
 const severities = ["critical","high","medium","low"];
 const targets = ["market-intelligence","logistics","documents","due-diligence","finance","risk","approvals","downstream","retail-operations"];
 
-async function list(ownerId: string, reference: string) {
-  const result = await env.DB!.prepare(`SELECT id, event_key AS eventKey, category, severity, title, message, target, status, read_at AS readAt, last_seen_at AS lastSeenAt, created_at AS createdAt FROM notification_events WHERE owner_id = ? AND trade_reference = ? ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END, CASE severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END, last_seen_at DESC LIMIT 100`).bind(ownerId, reference).all<any>();
+async function list(ownerId: string, reference: string, userId: string) {
+  const result = await env.DB!.prepare(`SELECT ne.id, ne.event_key AS eventKey, ne.category, ne.severity, ne.title, ne.message, ne.target, ne.status, CASE WHEN nrs.id IS NOT NULL THEN nrs.read_at WHEN ? = ne.owner_id THEN ne.read_at ELSE NULL END AS readAt, ne.last_seen_at AS lastSeenAt, ne.created_at AS createdAt FROM notification_events ne LEFT JOIN notification_read_states nrs ON nrs.event_id = ne.id AND nrs.user_id = ? WHERE ne.owner_id = ? AND ne.trade_reference = ? ORDER BY CASE ne.status WHEN 'active' THEN 0 ELSE 1 END, CASE ne.severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END, ne.last_seen_at DESC LIMIT 100`).bind(userId, userId, ownerId, reference).all<any>();
   const notifications = result.results ?? [];
   return { notifications, unreadCount: notifications.filter(item => item.status === "active" && !item.readAt).length };
 }
@@ -21,7 +22,7 @@ export async function GET(request: Request) {
   if (!reference) return respond({ error: "Trade reference is required" }, 400);
   const access = await requireTradePermission(env.DB, user, reference, "trade", "view");
   if (!access) return respond({ error: "Notification access denied" }, 403);
-  return respond(await list(access.ownerId, reference));
+  return respond(await list(access.ownerId, reference, user.userId));
 }
 
 export async function POST(request: Request) {
@@ -55,14 +56,19 @@ export async function POST(request: Request) {
     for (const item of existing) if (item.status === "active" && !activeKeys.has(item.eventKey)) statements.push(env.DB.prepare(`UPDATE notification_events SET status='resolved', last_seen_at=? WHERE id=? AND owner_id=?`).bind(now,item.id,access.ownerId));
     if (statements.length) await env.DB.batch(statements);
   } else if (body.action === "mark_read") {
-    if (!access.isOwner) return respond({ error: "Personal notification state for participants is not enabled yet" }, 403);
-    await env.DB.prepare(`UPDATE notification_events SET read_at = ? WHERE id = ? AND owner_id = ? AND trade_reference = ?`).bind(now,clean(body.id,80),access.ownerId,reference).run();
+    const eventId = clean(body.id,80);
+    const event = await env.DB.prepare(`SELECT id FROM notification_events WHERE id = ? AND owner_id = ? AND trade_reference = ?`).bind(eventId,access.ownerId,reference).first<any>();
+    if (!event) return respond({ error: "Notification not found" }, 404);
+    await env.DB.prepare(`INSERT INTO notification_read_states (id, owner_id, trade_reference, event_id, user_id, is_read, read_at, updated_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?) ON CONFLICT(id) DO UPDATE SET is_read=1, read_at=excluded.read_at, updated_at=excluded.updated_at`).bind(notificationReadStateId(eventId,user.userId),access.ownerId,reference,eventId,user.userId,now,now).run();
   } else if (body.action === "mark_unread") {
-    if (!access.isOwner) return respond({ error: "Personal notification state for participants is not enabled yet" }, 403);
-    await env.DB.prepare(`UPDATE notification_events SET read_at = NULL WHERE id = ? AND owner_id = ? AND trade_reference = ?`).bind(clean(body.id,80),access.ownerId,reference).run();
+    const eventId = clean(body.id,80);
+    const event = await env.DB.prepare(`SELECT id FROM notification_events WHERE id = ? AND owner_id = ? AND trade_reference = ?`).bind(eventId,access.ownerId,reference).first<any>();
+    if (!event) return respond({ error: "Notification not found" }, 404);
+    await env.DB.prepare(`INSERT INTO notification_read_states (id, owner_id, trade_reference, event_id, user_id, is_read, read_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, NULL, ?) ON CONFLICT(id) DO UPDATE SET is_read=0, read_at=NULL, updated_at=excluded.updated_at`).bind(notificationReadStateId(eventId,user.userId),access.ownerId,reference,eventId,user.userId,now).run();
   } else if (body.action === "mark_all_read") {
-    if (!access.isOwner) return respond({ error: "Personal notification state for participants is not enabled yet" }, 403);
-    await env.DB.prepare(`UPDATE notification_events SET read_at = ? WHERE owner_id = ? AND trade_reference = ? AND status = 'active' AND read_at IS NULL`).bind(now,access.ownerId,reference).run();
+    const active = await env.DB.prepare(`SELECT id FROM notification_events WHERE owner_id = ? AND trade_reference = ? AND status = 'active' LIMIT 100`).bind(access.ownerId,reference).all<any>();
+    const statements = active.results.map((event: any) => env.DB!.prepare(`INSERT INTO notification_read_states (id, owner_id, trade_reference, event_id, user_id, is_read, read_at, updated_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?) ON CONFLICT(id) DO UPDATE SET is_read=1, read_at=excluded.read_at, updated_at=excluded.updated_at`).bind(notificationReadStateId(event.id,user.userId),access.ownerId,reference,event.id,user.userId,now,now));
+    if (statements.length) await env.DB.batch(statements);
   } else return respond({ error: "Unsupported notification action" }, 400);
-  return respond(await list(access.ownerId, reference));
+  return respond(await list(access.ownerId, reference, user.userId));
 }

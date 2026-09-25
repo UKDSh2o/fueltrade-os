@@ -407,6 +407,20 @@ export const notificationEvents = sqliteTable("notification_events", {
   index("idx_notification_events_owner_reference_key").on(table.ownerId, table.tradeReference, table.eventKey),
 ]);
 
+export const notificationReadStates = sqliteTable("notification_read_states", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  tradeReference: text("trade_reference").notNull(),
+  eventId: text("event_id").notNull(),
+  userId: text("user_id").notNull(),
+  isRead: integer("is_read").notNull().default(1),
+  readAt: integer("read_at"),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  index("idx_notification_read_user_trade").on(table.userId, table.tradeReference),
+  index("idx_notification_read_event_user").on(table.eventId, table.userId),
+]);
+
 export const dealMessages = sqliteTable("deal_messages", {
   id: text("id").primaryKey(),
   ownerId: text("owner_id").notNull(),

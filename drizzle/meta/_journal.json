@@ -134,6 +134,13 @@
       "when": 1790296906468,
       "tag": "0018_handy_nomad",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1790343970904,
+      "tag": "0019_chunky_bastion",
+      "breakpoints": true
     }
   ]
 }
