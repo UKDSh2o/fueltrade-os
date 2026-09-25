@@ -130,6 +130,47 @@ export const voyages = sqliteTable("voyages", {
   index("idx_voyages_owner_reference").on(table.ownerId, table.tradeReference),
 ]);
 
+export const vesselPositionReports = sqliteTable("vessel_position_reports", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  tradeReference: text("trade_reference").notNull(),
+  voyageId: text("voyage_id").notNull(),
+  imo: text("imo").notNull(),
+  provider: text("provider").notNull().default("manual"),
+  latitudeE6: integer("latitude_e6").notNull(),
+  longitudeE6: integer("longitude_e6").notNull(),
+  speedTenths: integer("speed_tenths").notNull().default(0),
+  courseDegrees: integer("course_degrees").notNull().default(0),
+  positionAt: integer("position_at").notNull(),
+  sourceUrl: text("source_url").notNull().default(""),
+  createdBy: text("created_by").notNull(),
+  receivedAt: integer("received_at").notNull(),
+}, (table) => [
+  index("idx_vessel_positions_owner_trade_time").on(table.ownerId, table.tradeReference, table.positionAt),
+]);
+
+export const portHandoffs = sqliteTable("port_handoffs", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  tradeReference: text("trade_reference").notNull(),
+  portName: text("port_name").notNull(),
+  handoffType: text("handoff_type").notNull(),
+  fromParty: text("from_party").notNull(),
+  toParty: text("to_party").notNull(),
+  quantityMt: integer("quantity_mt").notNull().default(0),
+  documentId: text("document_id"),
+  status: text("status").notNull().default("recorded"),
+  note: text("note").notNull().default(""),
+  occurredAt: integer("occurred_at").notNull(),
+  recordedBy: text("recorded_by").notNull(),
+  acceptedBy: text("accepted_by"),
+  acceptedAt: integer("accepted_at"),
+  updatedAt: integer("updated_at").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, (table) => [
+  index("idx_port_handoffs_owner_trade_created").on(table.ownerId, table.tradeReference, table.createdAt),
+]);
+
 export const tradeFinance = sqliteTable("trade_finance", {
   id: text("id").primaryKey(),
   ownerId: text("owner_id").notNull(),
@@ -219,6 +260,11 @@ export const insurancePolicies = sqliteTable("insurance_policies", {
   expiryDate: integer("expiry_date"),
   coverageJson: text("coverage_json").notNull(),
   status: text("status").notNull().default("draft"),
+  verificationStatus: text("verification_status").notNull().default("unverified"),
+  evidenceDocumentId: text("evidence_document_id"),
+  verificationNote: text("verification_note").notNull().default(""),
+  verifiedBy: text("verified_by"),
+  verifiedAt: integer("verified_at"),
   updatedAt: integer("updated_at").notNull(),
   createdAt: integer("created_at").notNull(),
 }, (table) => [

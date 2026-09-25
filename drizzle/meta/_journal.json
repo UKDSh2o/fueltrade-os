@@ -127,6 +127,13 @@
       "when": 1790263238605,
       "tag": "0017_busy_wallow",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1790296906468,
+      "tag": "0018_handy_nomad",
+      "breakpoints": true
     }
   ]
 }
