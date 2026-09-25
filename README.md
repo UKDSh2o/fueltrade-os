@@ -6,7 +6,7 @@ The live platform is a Vinext/React application with Cloudflare Worker routes, D
 
 ## Development
 
-Node.js 24 is recommended. Run `npm run install:ci`, `npm test`, `npx tsc --noEmit`, and `npm run build`. For a local D1 preview, generate migrations with `npm run db:generate`, build, then apply pending migrations using the instructions in `docs/ARCHITECTURE.md`. Deploy the Sites checkout with the Sites workflow. Do not commit tokens, passwords, API keys, real deal data, or local D1 state.
+Node.js 24 is recommended. Run `pnpm install --frozen-lockfile`, `pnpm test`, `pnpm db:generate`, and `pnpm build`. The stable-checkpoint workflow runs the same test, migration-drift and production-build gates on every pull request and main-branch push. For a local D1 preview, apply pending migrations using the instructions in `docs/ARCHITECTURE.md`. Deploy the Sites checkout with the Sites workflow. Do not commit tokens, passwords, API keys, real deal data, or local D1 state.
 
 ## Status
 

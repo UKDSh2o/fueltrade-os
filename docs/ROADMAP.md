@@ -22,7 +22,7 @@ These are models and records; they do not independently verify a counterparty, p
 3. **Banking and logistics:** configure a lawful vessel-position provider and, when authorized, a bank evidence adapter. Manual bank execution evidence, insurance verification, the tracking adapter boundary and port custody handoff records are implemented; providers remain configuration-gated. Never represent recorded amounts as completed transfers.
 4. **Communications:** activate a patched self-hosted Chatwoot/Novu stack, then add attachment/search/mention UX and LiveKit self-hosted voice/video. External account connection needs owner authorization and provider credentials.
 5. **Market intelligence and AI:** lawful data-source agreements, quote provenance and freshness, role-scoped Copilot retrieval, audit and human approval for consequential automation. Licensed price feeds need subscription rights.
-6. **Deployment operations:** backups, monitoring, migration checks, rate limiting, retention policy, recovery exercises and CI-driven source mirror checks.
+6. **Deployment operations:** stable-checkpoint CI now runs locked installation, control tests, migration-drift detection and the production build. Backups, monitoring, rate limiting, retention policy, recovery exercises and automated Site/GitHub tree-parity checks remain.
 
 Each entry moves to “live” only after an end-to-end deployed test. The `UKDSh2o/fueltrade-os` GitHub repository is the public code checkpoint; never put actual transactions or secrets there.
 
