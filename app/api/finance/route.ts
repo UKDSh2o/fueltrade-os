@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { getChatGPTUser } from "../../chatgpt-auth";
 import { requireTradePermission } from "../../access-control";
 import { bankChangeDecision, canApprovePaymentInstruction, maskAccountReference, requiresFinanceApproval } from "../../../lib/finance-controls.js";
+import { paymentEvidenceDecision, paymentEvidenceGate } from "../../../lib/payment-evidence-controls.js";
 
 const respond = (body: unknown, status = 200) => Response.json(body, { status });
 const clean = (value: unknown, max = 160) => String(value ?? "").trim().slice(0, max);
@@ -24,12 +25,13 @@ export async function GET(request: Request) {
   if (!reference) return respond({ error: "Trade reference is required" }, 400);
   const access = await requireTradePermission(env.DB, user, reference, "finance", "view");
   if (!access) return respond({ error: "Finance access denied" }, 403);
-  const [row, bankChanges, instructions] = await Promise.all([
+  const [row, bankChanges, instructions, executionEvidence] = await Promise.all([
     env.DB.prepare(`SELECT instrument_type AS instrumentType, instrument_number AS instrumentNumber, issuing_bank AS issuingBank, advising_bank AS advisingBank, currency, amount_cents AS amountCents, issue_date AS issueDate, expiry_date AS expiryDate, escrow_bank AS escrowBank, performance_bond_bps AS performanceBondBps, bank_fees_cents AS bankFeesCents, milestones_json AS milestonesJson, status, updated_at AS updatedAt FROM trade_finance WHERE owner_id = ? AND trade_reference = ? ORDER BY updated_at DESC LIMIT 1`).bind(access.ownerId, reference).first<any>(),
     env.DB.prepare(`SELECT id, beneficiary_name AS beneficiaryName, bank_name AS bankName, swift_bic AS swiftBic, masked_account AS maskedAccount, reason, status, first_approved_by AS firstApprovedBy, first_approved_at AS firstApprovedAt, second_approved_by AS secondApprovedBy, second_approved_at AS secondApprovedAt, created_by AS createdBy, updated_at AS updatedAt, created_at AS createdAt FROM bank_detail_changes WHERE owner_id = ? AND trade_reference = ? ORDER BY created_at DESC LIMIT 30`).bind(access.ownerId, reference).all<any>(),
     env.DB.prepare(`SELECT id, bank_change_id AS bankChangeId, instruction_type AS instructionType, beneficiary_name AS beneficiaryName, bank_name AS bankName, masked_account AS maskedAccount, currency, amount_cents AS amountCents, purpose, status, created_by AS createdBy, submitted_by AS submittedBy, submitted_at AS submittedAt, approved_by AS approvedBy, approved_at AS approvedAt, updated_at AS updatedAt, created_at AS createdAt FROM payment_instructions WHERE owner_id = ? AND trade_reference = ? ORDER BY created_at DESC LIMIT 30`).bind(access.ownerId, reference).all<any>(),
+    env.DB.prepare(`SELECT id, instruction_id AS instructionId, evidence_document_id AS evidenceDocumentId, provider, provider_reference AS providerReference, reported_amount_cents AS reportedAmountCents, currency, status, note, executed_at AS executedAt, received_by AS receivedBy, confirmed_by AS confirmedBy, confirmed_at AS confirmedAt, created_at AS createdAt FROM payment_execution_evidence WHERE owner_id = ? AND trade_reference = ? ORDER BY created_at DESC LIMIT 30`).bind(access.ownerId, reference).all<any>(),
   ]);
-  return respond({ finance: row ? { ...row, milestones: JSON.parse(row.milestonesJson) } : null, bankChanges: bankChanges.results, instructions: instructions.results, disclaimer: "Records are approval-controlled instructions only. FuelTrade OS does not move money." });
+  return respond({ finance: row ? { ...row, milestones: JSON.parse(row.milestonesJson) } : null, bankChanges: bankChanges.results, instructions: instructions.results, executionEvidence: executionEvidence.results, disclaimer: "Records and evidence are approval-controlled only. FuelTrade OS does not move money." });
 }
 
 export async function POST(request: Request) {
@@ -123,6 +125,44 @@ export async function POST(request: Request) {
     if (!result.meta.changes) return respond({ error: "Payment instruction approval failed safely" }, 409);
     await audit(user, access.ownerId, reference, "payment_instruction_approved", "payment_instruction", id, { disclaimer: "Approved instruction record; no funds transferred" });
     return respond({ id, status: "approved", fundsTransferred: false });
+  }
+
+  if (action === "record_execution_evidence") {
+    const access = await requireTradePermission(env.DB, user, reference, "finance", "edit");
+    if (!access) return respond({ error: "Finance edit permission required" }, 403);
+    const instructionId = clean(body.instructionId, 80), evidenceDocumentId = clean(body.evidenceDocumentId, 80);
+    const [instruction, document] = await Promise.all([
+      env.DB.prepare(`SELECT id, status, amount_cents AS amountCents, currency FROM payment_instructions WHERE id = ? AND owner_id = ? AND trade_reference = ?`).bind(instructionId, access.ownerId, reference).first<any>(),
+      env.DB.prepare(`SELECT id, status, category FROM documents WHERE id = ? AND owner_id = ? AND trade_reference = ?`).bind(evidenceDocumentId, access.ownerId, reference).first<any>(),
+    ]);
+    const amountCents = Math.round(Number(body.amount) * 100);
+    const currency = clean(body.currency, 3).toUpperCase();
+    const gate = paymentEvidenceGate({ instruction, document, amountCents, currency });
+    if (!gate.allowed) return respond({ error: gate.reason }, 409);
+    const provider = clean(body.provider, 120), providerReference = clean(body.providerReference, 160);
+    if (!provider || !providerReference) return respond({ error: "Bank or provider and its reference are required" }, 400);
+    const duplicate = await env.DB.prepare(`SELECT id FROM payment_execution_evidence WHERE owner_id = ? AND trade_reference = ? AND provider = ? AND provider_reference = ? LIMIT 1`).bind(access.ownerId, reference, provider, providerReference).first<any>();
+    if (duplicate) return respond({ error: "This provider reference has already been recorded" }, 409);
+    const id = crypto.randomUUID(), now = Date.now();
+    await env.DB.prepare(`INSERT INTO payment_execution_evidence (id, owner_id, trade_reference, instruction_id, evidence_document_id, provider, provider_reference, reported_amount_cents, currency, status, note, executed_at, received_by, confirmed_by, confirmed_at, updated_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'received', ?, ?, ?, NULL, NULL, ?, ?)`).bind(id, access.ownerId, reference, instructionId, evidenceDocumentId, provider, providerReference, amountCents, currency, clean(body.note, 800), body.executedAt ? Date.parse(body.executedAt) : null, user.userId, now, now).run();
+    await audit(user, access.ownerId, reference, "payment_execution_evidence_recorded", "payment_execution_evidence", id, { instructionId, evidenceDocumentId, provider, providerReference, amountCents, currency, disclaimer: "Evidence record only; no funds transferred" });
+    return respond({ id, status: "received", fundsTransferred: false }, 201);
+  }
+
+  if (action === "decide_execution_evidence") {
+    const financeAccess = await requireTradePermission(env.DB, user, reference, "finance", "approve");
+    const approvalAccess = await requireTradePermission(env.DB, user, reference, "approvals", "approve");
+    if (!financeAccess || !approvalAccess) return respond({ error: "Finance and approval authority are required" }, 403);
+    const id = clean(body.id, 80), decision = clean(body.decision, 20);
+    const evidence = await env.DB.prepare(`SELECT received_by AS receivedBy FROM payment_execution_evidence WHERE id = ? AND owner_id = ? AND trade_reference = ? AND status = 'received'`).bind(id, financeAccess.ownerId, reference).first<any>();
+    if (!evidence) return respond({ error: "Received execution evidence not found" }, 404);
+    const gate = paymentEvidenceDecision(evidence.receivedBy, user.userId, decision);
+    if (!gate.allowed) return respond({ error: gate.reason }, 409);
+    const now = Date.now();
+    const result = await env.DB.prepare(`UPDATE payment_execution_evidence SET status = ?, confirmed_by = ?, confirmed_at = ?, updated_at = ? WHERE id = ? AND owner_id = ? AND trade_reference = ? AND status = 'received'`).bind(gate.status, user.userId, now, now, id, financeAccess.ownerId, reference).run();
+    if (!result.meta.changes) return respond({ error: "Evidence decision failed safely" }, 409);
+    await audit(user, financeAccess.ownerId, reference, `payment_execution_evidence_${gate.status}`, "payment_execution_evidence", id, { decision: gate.status, disclaimer: "Evidence record only; no funds transferred" });
+    return respond({ id, status: gate.status, fundsTransferred: false });
   }
 
   return respond({ error: "Unsupported finance action" }, 400);

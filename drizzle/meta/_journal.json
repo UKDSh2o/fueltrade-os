@@ -141,6 +141,13 @@
       "when": 1790343970904,
       "tag": "0019_chunky_bastion",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1790344782609,
+      "tag": "0020_old_misty_knight",
+      "breakpoints": true
     }
   ]
 }

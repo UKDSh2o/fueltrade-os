@@ -244,6 +244,29 @@ export const paymentInstructions = sqliteTable("payment_instructions", {
   index("idx_payment_instructions_owner_trade_status").on(table.ownerId, table.tradeReference, table.status),
 ]);
 
+export const paymentExecutionEvidence = sqliteTable("payment_execution_evidence", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  tradeReference: text("trade_reference").notNull(),
+  instructionId: text("instruction_id").notNull(),
+  evidenceDocumentId: text("evidence_document_id").notNull(),
+  provider: text("provider").notNull(),
+  providerReference: text("provider_reference").notNull(),
+  reportedAmountCents: integer("reported_amount_cents").notNull(),
+  currency: text("currency").notNull(),
+  status: text("status").notNull().default("received"),
+  note: text("note").notNull().default(""),
+  executedAt: integer("executed_at"),
+  receivedBy: text("received_by").notNull(),
+  confirmedBy: text("confirmed_by"),
+  confirmedAt: integer("confirmed_at"),
+  updatedAt: integer("updated_at").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, (table) => [
+  index("idx_payment_execution_owner_trade").on(table.ownerId, table.tradeReference, table.createdAt),
+  index("idx_payment_execution_instruction").on(table.instructionId, table.status),
+]);
+
 export const insurancePolicies = sqliteTable("insurance_policies", {
   id: text("id").primaryKey(),
   ownerId: text("owner_id").notNull(),
