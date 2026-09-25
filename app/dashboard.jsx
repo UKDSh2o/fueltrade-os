@@ -8,6 +8,7 @@ import './fueltrade.css';
 import DealRoom from './deal-room';
 import FullDeal from './full-deal';
 import CommandDashboard from './command-dashboard';
+import { crossRate, uniqueCurrencyCodes } from '../lib/fx-reference.js';
 
 const money = (v, digits=0) => new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:digits}).format(v);
 const num = (v, digits=1) => new Intl.NumberFormat('en-US',{maximumFractionDigits:digits}).format(v);
@@ -106,6 +107,8 @@ function App({ user }) {
   const [marketData,setMarketData] = useState(null);
   const [marketLoading,setMarketLoading] = useState(false);
   const [marketError,setMarketError] = useState('');
+  const [extraFxCurrencies,setExtraFxCurrencies] = useState(['GBP']);
+  const [fxCurrencyToAdd,setFxCurrencyToAdd] = useState('');
   const [petroleum,setPetroleum] = useState(null);
   const [petroleumLoading,setPetroleumLoading] = useState(false);
   const [pricingLink,setPricingLink] = useState({benchmark:'brent',manualPrice:75,basis:0,barrelsPerMt:7.33});
@@ -128,6 +131,9 @@ function App({ user }) {
   const result = useMemo(()=>calculateTrade(modelTrade),[trade,routePortCostPerMt]);
   const risk = useMemo(()=>riskLevel(modelTrade,result),[trade,routePortCostPerMt,result]);
   const route = routes[trade.route]||{destination:routePlan.at(-1)?.country||'',currency:'USD',fx:1};
+  const dealFxCurrencies=useMemo(()=>uniqueCurrencyCodes(['USD','EUR',route.currency,finance.currency,policy.currency,instructionDraft.currency,executionDraft.currency,...paymentInstructions.map(item=>item.currency),...executionEvidence.map(item=>item.currency)]),[route.currency,finance.currency,policy.currency,instructionDraft.currency,executionDraft.currency,paymentInstructions,executionEvidence]);
+  const activeFxCurrencies=useMemo(()=>uniqueCurrencyCodes([...dealFxCurrencies,...extraFxCurrencies]).filter(code=>code!=='USD'),[dealFxCurrencies,extraFxCurrencies]);
+  const selectableFxCurrencies=(marketData?.availableCurrencies||[]).filter(code=>code!=='USD'&&!activeFxCurrencies.includes(code));
   const firstPort=routePlan[0]||{}; const lastPort=routePlan.at(-1)||{};
   const navigateTo=(key,id)=>{setActiveNav(key);setMobile(false);document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'});if(typeof history!=='undefined')history.replaceState(null,'',`#${id}`);};
   const update = (key,value)=>setTrade(t=>({...t,[key]:value}));
@@ -137,6 +143,7 @@ function App({ user }) {
   const removePortCall=key=>setTrade(t=>({...t,routePlan:(t.routePlan||routePlan).filter(call=>call.key!==key)}));
   const movePortCall=(index,direction)=>setTrade(t=>{const calls=[...(t.routePlan||routePlan)];const target=index+direction;if(target<0||target>=calls.length)return t;[calls[index],calls[target]]=[calls[target],calls[index]];return {...t,routePlan:calls};});
   const loadMarket = async ()=>{setMarketLoading(true);setMarketError('');try{const response=await fetch('/api/market');const data=await response.json();if(!response.ok)throw new Error(data.error||'Official market feed unavailable');setMarketData(data);}catch(error){setMarketError(error.message||'Official market feed unavailable');}finally{setMarketLoading(false);}};
+  const activateFxCurrency=()=>{if(!fxCurrencyToAdd)return;setExtraFxCurrencies(values=>uniqueCurrencyCodes([...values,fxCurrencyToAdd]));setFxCurrencyToAdd('');};
   const loadPetroleum = async ()=>{setPetroleumLoading(true);try{const response=await fetch('/api/market/petroleum');const data=await response.json();setPetroleum(data);}catch{setPetroleum({configured:false,message:'Petroleum feed unavailable.'});}finally{setPetroleumLoading(false);}};
   const linkedBenchmark=petroleum?.configured?petroleum.benchmarks?.[pricingLink.benchmark]?.latest?.value:Number(pricingLink.manualPrice)||0;
   const linkedPricePerMt=linkedBenchmark*Number(pricingLink.barrelsPerMt||0)+Number(pricingLink.basis||0);
@@ -375,11 +382,11 @@ const canReviewDueDiligence=currentAccess.isOwner||currentAccess.permissions?.ap
         </section>
 
         <section className="market-data-grid">
-          <section className="panel fx-panel"><div className="panel-head"><div><h2>Official FX reference</h2><p>Daily euro reference rates with source and freshness controls</p></div><button className="secondary" onClick={loadMarket} disabled={marketLoading}><RefreshCw size={14} className={marketLoading?'spin':''}/>{marketLoading?'Refreshing…':'Refresh rates'}</button></div>
-            {marketError?<div className="feed-error"><WifiOff size={22}/><div><b>Feed temporarily unavailable</b><span>{marketError}. Existing trade assumptions remain unchanged.</span></div></div>:marketData?<><div className="fx-rates"><article><span>EUR / USD</span><b>{num(marketData.rates.USD,4)}</b><small>1 EUR in USD</small></article><article><span>USD / EUR</span><b>{num(marketData.crosses.USD_EUR,4)}</b><small>1 USD in EUR</small></article><article><span>GBP / USD</span><b>{num(marketData.crosses.GBP_USD,4)}</b><small>1 GBP in USD</small></article><article><span>USD / GBP</span><b>{num(marketData.crosses.USD_GBP,4)}</b><small>1 USD in GBP</small></article></div><div className="feed-provenance"><Wifi size={15}/><span><b>{marketData.source.name}</b> · reference date {marketData.asOf} · retrieved {new Date(marketData.retrievedAt).toLocaleTimeString()}</span><em>OFFICIAL DAILY</em></div></>:<div className="feed-loading"><RefreshCw size={20}/> Loading official rates…</div>}
+          <section className="panel fx-panel"><div className="panel-head"><div><h2>Official FX reference</h2><p>Deal-linked daily reference rates with source and freshness controls</p></div><button className="secondary" onClick={loadMarket} disabled={marketLoading}><RefreshCw size={14} className={marketLoading?'spin':''}/>{marketLoading?'Refreshing…':'Refresh rates'}</button></div>
+            {marketError?<div className="feed-error"><WifiOff size={22}/><div><b>Feed temporarily unavailable</b><span>{marketError}. Existing trade assumptions remain unchanged.</span></div></div>:marketData?<><div className="fx-active-bar"><div><span>Active for this deal</span><strong>{dealFxCurrencies.map(code=><i key={code}>{code}</i>)}</strong></div><div className="fx-add"><select aria-label="Additional official FX currency" value={fxCurrencyToAdd} onChange={e=>setFxCurrencyToAdd(e.target.value)}><option value="">Add official currency</option>{selectableFxCurrencies.map(code=><option key={code} value={code}>{code}</option>)}</select><button className="secondary" onClick={activateFxCurrency} disabled={!fxCurrencyToAdd}><Plus size={14}/> Activate</button></div></div><div className="fx-rates fx-deal-rates">{activeFxCurrencies.map(code=>{const officialRate=crossRate(marketData.rates,'USD',code);const modelRate=code===route.currency&&Number(route.fx)>0?Number(route.fx):null;const value=officialRate??modelRate;const official=officialRate!==null;return <article className={official?'':'assumption'} key={code}><span>USD / {code}</span><b>{value===null?'Unavailable':num(value,value>=100?2:4)}</b><small>{official?`1 USD in ${code} · official`:(modelRate!==null?'Trade model assumption':'No approved source connected')}</small>{official&&<em>{num(crossRate(marketData.rates,code,'USD'),6)} USD / {code}</em>}</article>})}</div><div className="feed-provenance"><Wifi size={15}/><span><b>{marketData.source.name}</b> · reference date {marketData.asOf} · retrieved {new Date(marketData.retrievedAt).toLocaleTimeString()} · informational reference only</span><em>OFFICIAL DAILY</em></div></>:<div className="feed-loading"><RefreshCw size={20}/> Loading official rates…</div>}
           </section>
           <section className="panel source-registry"><div className="panel-head"><div><h2>Market source registry</h2><p>Integration readiness and licensing controls</p></div><Database size={18}/></div>
-            <div className="source-list"><article><i className="ready"><CheckCircle2 size={15}/></i><div><b>ECB exchange rates</b><small>Official daily EUR, USD and GBP reference rates</small></div><em className="ready">CONNECTED</em></article><article><i className={petroleum?.configured?'ready':'next'}>{petroleum?.configured?<CheckCircle2 size={15}/>:<Clock3 size={15}/>}</i><div><b>EIA petroleum data</b><small>Brent and WTI spot history · connector ready</small></div><em className={petroleum?.configured?'ready':'next'}>{petroleum?.configured?'CONNECTED':'KEY REQUIRED'}</em></article><article><i><LockKeyhole size={15}/></i><div><b>Platts / Argus assessments</b><small>Premium licensed benchmarks · credentials required</small></div><em>LOCKED</em></article><article><i><Ship size={15}/></i><div><b>AIS vessel positions</b><small>Provider selection pending coverage and redistribution review</small></div><em>REVIEW</em></article></div>
+            <div className="source-list"><article><i className="ready"><CheckCircle2 size={15}/></i><div><b>ECB exchange rates</b><small>Official daily reference rates for all currencies in the ECB feed</small></div><em className="ready">CONNECTED</em></article><article><i className={petroleum?.configured?'ready':'next'}>{petroleum?.configured?<CheckCircle2 size={15}/>:<Clock3 size={15}/>}</i><div><b>EIA petroleum data</b><small>Brent and WTI spot history · connector ready</small></div><em className={petroleum?.configured?'ready':'next'}>{petroleum?.configured?'CONNECTED':'KEY REQUIRED'}</em></article><article><i><LockKeyhole size={15}/></i><div><b>Platts / Argus assessments</b><small>Premium licensed benchmarks · credentials required</small></div><em>LOCKED</em></article><article><i><Ship size={15}/></i><div><b>AIS vessel positions</b><small>Provider selection pending coverage and redistribution review</small></div><em>REVIEW</em></article></div>
           </section>
         </section>
 

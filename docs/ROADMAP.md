@@ -2,7 +2,7 @@
 
 ## Live now
 
-- Trade economics and risk score; supplier quotation comparison and manual market data inputs.
+- Trade economics and risk score; supplier quotation comparison; and deal-aware official ECB FX references for route, finance, insurance and payment currencies, with optional currency activation and explicit separation of unsupported model assumptions.
 - Multi-port route planning, voyage and port operations records.
 - D1 trade records, workflow milestones, approvals, counterparties, finance/LC terms, insurance, downstream and retail reconciliation records.
 - R2 document versions with secure permission-checked download, SHA-256 fingerprints, review/approval lifecycle and audit events.

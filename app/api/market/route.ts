@@ -1,4 +1,5 @@
 import { getChatGPTUser } from "../../chatgpt-auth";
+import { crossRate, parseEcbDailyXml } from "../../../lib/fx-reference.js";
 
 const ECB_DAILY = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml";
 
@@ -9,22 +10,22 @@ export async function GET() {
     const response = await fetch(ECB_DAILY, { headers: { accept: "application/xml" } });
     if (!response.ok) throw new Error(`ECB returned ${response.status}`);
     const xml = await response.text();
-    const date = xml.match(/time=['"]([^'"]+)['"]/)?.[1] ?? null;
-    const read = (currency: string) => {
-      const match = xml.match(new RegExp(`currency=['"]${currency}['"]\\s+rate=['"]([^'"]+)['"]`));
-      return match ? Number(match[1]) : null;
-    };
-    const usd = read("USD");
-    const gbp = read("GBP");
-    if (!usd || !gbp) throw new Error("Required ECB rates were missing");
+    const { asOf, rates } = parseEcbDailyXml(xml);
+    const availableCurrencies = Object.keys(rates).sort();
     return Response.json({
-      asOf: date,
+      asOf,
       retrievedAt: Date.now(),
       source: { name: "European Central Bank", url: "https://data.ecb.europa.eu/" },
       base: "EUR",
-      rates: { EUR: 1, USD: usd, GBP: gbp, LKR: null },
-      crosses: { USD_EUR: 1 / usd, GBP_USD: usd / gbp, USD_GBP: gbp / usd },
+      rates,
+      availableCurrencies,
+      crosses: {
+        USD_EUR: crossRate(rates, "USD", "EUR"),
+        GBP_USD: crossRate(rates, "GBP", "USD"),
+        USD_GBP: crossRate(rates, "USD", "GBP"),
+      },
       status: "official_reference",
+      usage: "reference_only",
     }, { headers: { "cache-control": "public, max-age=1800" } });
   } catch (error) {
     console.error("ECB market feed unavailable", error);
