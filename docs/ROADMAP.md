@@ -7,6 +7,7 @@
 - D1 trade records, workflow milestones, approvals, counterparties, finance/LC terms, insurance, downstream and retail reconciliation records.
 - R2 document versions with secure permission-checked download, SHA-256 fingerprints, review/approval lifecycle and audit events.
 - Per-deal document requirements with due dates and latest-version review status. This internal checklist does not assert bank presentation or acceptance.
+- Role-gated PDF signing drafts and a self-hosted Documenso envelope adapter. Provider-backed prepare/send/status checks and signed-PDF return are implemented, but live signing needs a configured instance and end-to-end test.
 - Role-scoped Full Deal summary, accepted participant invitations, route-level RBAC, buyer/seller margin redaction, per-user notification read state, audit entries and Sites-managed sign-in.
 - Audited internal conversations, safe email sandbox, Chatwoot transport adapter for email/WhatsApp/Telegram and Novu notification adapter. External delivery remains configuration-gated.
 - Reviewable KYB/UBO/sanctions/vessel/bank/insurance evidence records, with an optional OpenSanctions or self-hosted yente matching adapter. Automated matches never make the final disposition.
@@ -19,7 +20,7 @@ These are models and records; they do not independently verify a counterparty, p
 ## Next dependency order
 
 1. **Collaboration activation:** grant explicit Sites access to approved participants and complete a two-account deployment test. Per-user notification read state is implemented. Never use public access as an invitation shortcut.
-2. **Document and DD depth:** reusable requirement templates, document retention, insurer/Q88 validation, periodic re-screening and deployment testing against a lawfully licensed OpenSanctions/yente dataset. Deal-specific document requirements and due dates are implemented.
+2. **Document and DD depth:** reusable requirement templates, document retention, insurer/Q88 validation, periodic re-screening and deployment testing against a lawfully licensed OpenSanctions/yente dataset. Deal-specific document requirements and due dates are implemented. For e-signatures, deploy Documenso, test with a real recipient, add provider reconciliation, multi-signer layout and retention controls.
 3. **Banking and logistics:** configure a lawful vessel-position provider and, when authorized, a bank evidence adapter. Manual bank execution evidence, insurance verification, the tracking adapter boundary and port custody handoff records are implemented; providers remain configuration-gated. Never represent recorded amounts as completed transfers.
 4. **Communications:** activate a patched self-hosted Chatwoot/Novu stack, then add attachment/search/mention UX and LiveKit self-hosted voice/video. External account connection needs owner authorization and provider credentials.
 5. **Market intelligence and AI:** lawful data-source agreements, quote provenance and freshness, role-scoped Copilot retrieval, audit and human approval for consequential automation. Licensed price feeds need subscription rights.

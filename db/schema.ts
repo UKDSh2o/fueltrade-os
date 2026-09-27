@@ -80,6 +80,23 @@ export const documentRequirements = sqliteTable("document_requirements", {
   createdAt: integer("created_at").notNull(),
 }, (table) => [index("idx_document_requirements_trade").on(table.ownerId, table.tradeReference)]);
 
+export const signatureRequests = sqliteTable("signature_requests", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  tradeReference: text("trade_reference").notNull(),
+  documentId: text("document_id").notNull(),
+  documentSha256: text("document_sha256").notNull(),
+  signerEmail: text("signer_email").notNull(),
+  signerName: text("signer_name").notNull(),
+  status: text("status").notNull().default("draft"),
+  providerEnvelopeId: text("provider_envelope_id"),
+  signedObjectKey: text("signed_object_key"),
+  signedSha256: text("signed_sha256"),
+  requestedBy: text("requested_by").notNull(),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [index("idx_signature_requests_trade").on(table.ownerId, table.tradeReference)]);
+
 export const dueDiligenceChecks = sqliteTable("due_diligence_checks", {
   id: text("id").primaryKey(),
   ownerId: text("owner_id").notNull(),
