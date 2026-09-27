@@ -1,0 +1,68 @@
+name: fueltrade-signing
+
+services:
+  database:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: documenso
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_DB: documenso
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U documenso -d documenso"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  documenso:
+    image: ghcr.io/documenso/documenso:v2.16.0
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      PORT: "3000"
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?set in .env}
+      NEXT_PRIVATE_ENCRYPTION_KEY: ${NEXT_PRIVATE_ENCRYPTION_KEY:?set in .env}
+      NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY: ${NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY:?set in .env}
+      NEXT_PUBLIC_WEBAPP_URL: https://${SIGNING_DOMAIN:?set in .env}
+      NEXT_PRIVATE_INTERNAL_WEBAPP_URL: http://localhost:3000
+      NEXT_PRIVATE_DATABASE_URL: postgresql://documenso:${POSTGRES_PASSWORD}@database:5432/documenso
+      NEXT_PRIVATE_DIRECT_DATABASE_URL: postgresql://documenso:${POSTGRES_PASSWORD}@database:5432/documenso
+      NEXT_PRIVATE_SMTP_TRANSPORT: smtp-auth
+      NEXT_PRIVATE_SMTP_HOST: ${SMTP_HOST:?set in .env}
+      NEXT_PRIVATE_SMTP_PORT: ${SMTP_PORT:-587}
+      NEXT_PRIVATE_SMTP_USERNAME: ${SMTP_USERNAME:?set in .env}
+      NEXT_PRIVATE_SMTP_PASSWORD: ${SMTP_PASSWORD:?set in .env}
+      NEXT_PRIVATE_SMTP_FROM_NAME: FuelTrade Signing
+      NEXT_PRIVATE_SMTP_FROM_ADDRESS: ${SMTP_FROM:?set in .env}
+      NEXT_PRIVATE_SIGNING_TRANSPORT: local
+      NEXT_PRIVATE_SIGNING_LOCAL_FILE_PATH: /opt/documenso/cert.p12
+      NEXT_PRIVATE_SIGNING_PASSPHRASE: ${SIGNING_CERT_PASSWORD:?set in .env}
+      NEXT_PUBLIC_DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
+    volumes:
+      - ./private/cert.p12:/opt/documenso/cert.p12:ro
+    expose:
+      - "3000"
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - documenso
+    environment:
+      SIGNING_DOMAIN: ${SIGNING_DOMAIN:?set in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
