@@ -69,6 +69,17 @@ export const documents = sqliteTable("documents", {
   index("idx_documents_owner_trade_group_version").on(table.ownerId, table.tradeReference, table.groupId, table.versionNumber),
 ]);
 
+export const documentRequirements = sqliteTable("document_requirements", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  tradeReference: text("trade_reference").notNull(),
+  category: text("category").notNull(),
+  note: text("note").notNull().default(""),
+  dueAt: integer("due_at"),
+  createdBy: text("created_by").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, (table) => [index("idx_document_requirements_trade").on(table.ownerId, table.tradeReference)]);
+
 export const dueDiligenceChecks = sqliteTable("due_diligence_checks", {
   id: text("id").primaryKey(),
   ownerId: text("owner_id").notNull(),
