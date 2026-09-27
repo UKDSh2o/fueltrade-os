@@ -29,3 +29,7 @@ Each entry moves to “live” only after an end-to-end deployed test. The `UKDS
 ## Command Centre layout
 
 The Deal Command Centre offers trader, legal, vessel captain, port operator, finance and administrator layout lenses. Large buttons lead to working sections, and Full Deal is permanently visible. The signed-in user may customize and save a separate layout for each lens in D1. A lens only changes navigation; server-side permissions and margin scopes determine actual access.
+
+## Conversation visibility
+
+Internal unaddressed group rooms are shared with accepted deal participants who have comments permission. Direct and ticket rooms, and groups with an explicit participant list, are visible only to listed participants and the owner. Server routes enforce this on reads, sends and AI drafts. Priority notifications are filtered by the participant's module permissions and conversation membership; hidden conversations do not leak through the bell. External channel activation remains configuration-gated.

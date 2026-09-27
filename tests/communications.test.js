@@ -27,3 +27,24 @@ test('safe drafts never accept payment changes without independent verification'
   assert.match(draft, /verified through our approved independent channel/i);
   assert.doesNotMatch(draft, /we (?:accept|approve|will pay)/i);
 });
+
+import { canAccessThread, prepareThreadParticipants } from '../lib/communications.js';
+
+test('direct and ticket rooms exclude other deal members', () => {
+  const direct={threadKind:'direct',channel:'internal',participants:['lawyer@example.com','owner@example.com']};
+  assert.equal(canAccessThread(direct,'lawyer@example.com'),true);
+  assert.equal(canAccessThread(direct,'captain@example.com'),false);
+  assert.equal(canAccessThread(direct,'captain@example.com',true),true);
+  assert.equal(canAccessThread({threadKind:'ticket',channel:'internal',participants:[]},'captain@example.com'),false);
+  assert.equal(canAccessThread({threadKind:'group',channel:'internal',participants:[]},'captain@example.com'),true);
+  assert.equal(canAccessThread({threadKind:'group',channel:'email',participants:[]},'captain@example.com'),false);
+});
+
+test('internal direct rooms require a verified active peer', () => {
+  const args={available:['captain@example.com','lawyer@example.com'],author:'captain@example.com',kind:'direct',channel:'internal'};
+  assert.deepEqual(prepareThreadParticipants({...args,requested:['lawyer@example.com']}),['lawyer@example.com','captain@example.com']);
+  assert.throws(()=>prepareThreadParticipants({...args,requested:['outsider@example.com']}));
+  assert.throws(()=>prepareThreadParticipants({...args,requested:[]}));
+  assert.deepEqual(prepareThreadParticipants({...args,kind:'group',requested:[]}),[]);
+  assert.deepEqual(prepareThreadParticipants({...args,kind:'group',channel:'email',requested:[]}),['captain@example.com']);
+});

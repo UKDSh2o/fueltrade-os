@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { env } from "cloudflare:workers";
 import { getChatGPTUser } from "../../chatgpt-auth";
-import { buildSafeDraft, classifyMessage, connectionCatalog, normalizeChannel, normalizeParticipants, safeConnector } from "../../../lib/communications.js";
+import { buildSafeDraft, classifyMessage, connectionCatalog, normalizeChannel, normalizeParticipants, safeConnector, canAccessThread, prepareThreadParticipants } from "../../../lib/communications.js";
 import { normalizeChatwootConversationId } from "../../../lib/chatwoot-webhook.js";
 import { requireTradePermission } from "../../access-control";
 
@@ -68,7 +68,7 @@ export async function GET(request: Request) {
     env.DB.prepare("SELECT email, name, organization, role, permissions_json AS permissionsJson, status FROM trade_members WHERE owner_id = ? AND trade_reference = ? AND status = 'active' ORDER BY created_at").bind(access.ownerId, reference).all<any>(),
   ]);
 
-  const threadRows = threads.results.map((row: any) => ({ ...row, participants: JSON.parse(row.participantsJson) }));
+  const threadRows = threads.results.map((row: any) => ({ ...row, participants: JSON.parse(row.participantsJson) })).filter((row: any) => canAccessThread(row, user.email, access.isOwner));
   const messages = threadRows.length ? await env.DB.prepare(`SELECT id, thread_id AS threadId, direction, author, body, ai_priority AS aiPriority, ai_reason AS aiReason, draft_reply AS draftReply, sent_at AS sentAt FROM communication_messages WHERE owner_id = ? AND thread_id IN (${threadRows.map(() => "?").join(",")}) ORDER BY sent_at ASC LIMIT 500`).bind(access.ownerId, ...threadRows.map((row: any) => row.id)).all<any>() : { results: [] };
   const settings = runtime();
   const configured = new Set(connections.results.filter((item: any) => item.status === "connected").map((item: any) => item.provider));
@@ -137,7 +137,11 @@ export async function POST(request: Request) {
     const id = crypto.randomUUID();
     const channel = normalizeChannel(body.channel);
     const threadKind = ["group", "direct", "ticket"].includes(body.threadKind) ? body.threadKind : "group";
-    const participants = normalizeParticipants(body.participants);
+    const activeMembers = await env.DB.prepare("SELECT email FROM trade_members WHERE owner_id = ? AND trade_reference = ? AND status = 'active'").bind(access.ownerId, reference).all<{email:string}>();
+    let participants: string[];
+    try {
+      participants = prepareThreadParticipants({requested:body.participants,available:[user.email,...activeMembers.results.map(member=>member.email)],author:user.email,kind:threadKind,channel});
+    } catch(error:any) { return respond({error:error.message},400); }
     const externalId = channel === "email_sandbox" ? `sandbox:${id}` : "";
     await env.DB.prepare("INSERT INTO communication_threads (id, owner_id, trade_reference, channel, thread_kind, external_id, subject, participants_json, priority, priority_reason, status, summary, last_message_at, updated_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
       .bind(id, access.ownerId, reference, channel, threadKind, externalId, subject, JSON.stringify(participants), "normal", "", "open", "", now, now, now).run();
@@ -167,8 +171,8 @@ export async function POST(request: Request) {
     if (!await requireTradePermission(env.DB, user, reference, "comments", "edit")) return respond({ error: "Message send permission required" }, 403);
     const threadId = clean(body.threadId, 80), message = clean(body.message, 8000);
     if (!threadId || !message) return respond({ error: "Conversation and message are required" }, 400);
-    const thread = await env.DB.prepare("SELECT channel, external_id AS externalId, subject, participants_json AS participantsJson FROM communication_threads WHERE id = ? AND owner_id = ? AND trade_reference = ?").bind(threadId, access.ownerId, reference).first<any>();
-    if (!thread) return respond({ error: "Conversation not found" }, 404);
+    const thread = await env.DB.prepare("SELECT channel, thread_kind AS threadKind, external_id AS externalId, subject, participants_json AS participantsJson FROM communication_threads WHERE id = ? AND owner_id = ? AND trade_reference = ?").bind(threadId, access.ownerId, reference).first<any>();
+    if (!thread || !canAccessThread({...thread,participants:JSON.parse(thread.participantsJson)},user.email,access.isOwner)) return respond({ error: "Conversation not found" }, 404);
     if (!["internal", "email_sandbox"].includes(thread.channel)) {
       if (!access.isOwner && !await requireTradePermission(env.DB, user, reference, "comments", "approve")) return respond({ error: "External messages require owner or approval permission" }, 403);
       const settings = runtime();
@@ -183,7 +187,7 @@ export async function POST(request: Request) {
     ];
     if (insight.priority !== "normal") {
       const recipients = JSON.parse(thread.participantsJson || "[]");
-      statements.push(env.DB.prepare("INSERT INTO notification_events (id, owner_id, trade_reference, event_key, category, severity, title, message, target, status, read_at, last_seen_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(crypto.randomUUID(), access.ownerId, reference, `communication:${id}`, "communications", insight.priority === "urgent" ? "critical" : "high", `${insight.priority === "urgent" ? "Urgent" : "Priority"} message: ${thread.subject}`, message.slice(0, 300), recipients.join(", ") || user.email, "active", null, now, now));
+      statements.push(env.DB.prepare("INSERT INTO notification_events (id, owner_id, trade_reference, event_key, category, severity, title, message, target, status, read_at, last_seen_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(crypto.randomUUID(), access.ownerId, reference, `communication:${id}`, "communications", insight.priority === "urgent" ? "critical" : "high", `${insight.priority === "urgent" ? "Urgent" : "Priority"} message: ${thread.subject}`, message.slice(0, 300), "deal-room", "active", null, now, now));
     }
     await env.DB.batch(statements);
     await audit(user, access.ownerId, reference, "communication_message_sent", "communication_message", id, { threadId, channel: thread.channel, priority: insight.priority });
@@ -206,7 +210,7 @@ export async function POST(request: Request) {
     ];
     if (insight.priority !== "normal") {
       const recipients = JSON.parse(thread.participantsJson || "[]");
-      statements.push(env.DB.prepare("INSERT INTO notification_events (id, owner_id, trade_reference, event_key, category, severity, title, message, target, status, read_at, last_seen_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(crypto.randomUUID(), access.ownerId, reference, `communication:${id}`, "communications", insight.priority === "urgent" ? "critical" : "high", `${insight.priority === "urgent" ? "Urgent" : "Priority"} test email: ${thread.subject}`, message.slice(0, 300), recipients.join(", ") || user.email, "active", null, now, now));
+      statements.push(env.DB.prepare("INSERT INTO notification_events (id, owner_id, trade_reference, event_key, category, severity, title, message, target, status, read_at, last_seen_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(crypto.randomUUID(), access.ownerId, reference, `communication:${id}`, "communications", insight.priority === "urgent" ? "critical" : "high", `${insight.priority === "urgent" ? "Urgent" : "Priority"} test email: ${thread.subject}`, message.slice(0, 300), "deal-room", "active", null, now, now));
     }
     await env.DB.batch(statements);
     await audit(user, access.ownerId, reference, "communication_test_email_received", "communication_message", id, { threadId, author, priority: insight.priority });
@@ -216,6 +220,8 @@ export async function POST(request: Request) {
   if (body.action === "draft_reply") {
     if (!await requireTradePermission(env.DB, user, reference, "comments", "edit")) return respond({ error: "Reply drafting permission required" }, 403);
     const threadId = clean(body.threadId, 80);
+    const thread = await env.DB.prepare("SELECT thread_kind AS threadKind, channel, participants_json AS participantsJson FROM communication_threads WHERE id = ? AND owner_id = ? AND trade_reference = ?").bind(threadId, access.ownerId, reference).first<any>();
+    if (!thread || !canAccessThread({...thread,participants:JSON.parse(thread.participantsJson)},user.email,access.isOwner)) return respond({ error: "Conversation not found" }, 404);
     const latest = await env.DB.prepare("SELECT m.id, m.body, t.subject, t.summary FROM communication_messages m JOIN communication_threads t ON t.id = m.thread_id WHERE m.thread_id = ? AND m.owner_id = ? AND t.trade_reference = ? ORDER BY m.sent_at DESC LIMIT 1").bind(threadId, access.ownerId, reference).first<any>();
     if (!latest) return respond({ error: "Add or sync a message before drafting a reply" }, 404);
     try {
