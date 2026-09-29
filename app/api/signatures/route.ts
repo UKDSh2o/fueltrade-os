@@ -92,18 +92,20 @@ export async function POST(request: Request) {
     if (row.status !== "prepared") return respond({ error: "Request is not ready to send" }, 409);
     try {
       const response = await providerFetch(config, "/envelope/distribute", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ envelopeId: row.providerEnvelopeId }) });
-      if (!response.ok) return respond({ error: "Signing provider did not send the request" }, 502);
+      if (!response.ok) return respond({ error: "Signing provider did not confirm delivery; check status before retrying" }, 502);
       await env.DB.prepare("UPDATE signature_requests SET status = 'sent', updated_at = ? WHERE id = ? AND status = 'prepared'").bind(now, row.id).run();
       await audit(access.ownerId, reference, user, "signature_sent", row.id, { envelopeId: row.providerEnvelopeId, signerEmail: row.signerEmail }, now);
       return respond({ id: row.id, status: "sent" });
-    } catch { return respond({ error: "Signing provider response unavailable; verify delivery at provider before retrying" }, 502); }
+    } catch { return respond({ error: "Signing provider response unavailable; check status before retrying" }, 502); }
   }
-  if (!["sent", "pending", "completed"].includes(row.status)) return respond({ error: "Request has not been sent" }, 409);
+  // A distribution response may be lost after the provider accepts the request.
+  if (!["prepared", "sent", "pending", "completed"].includes(row.status)) return respond({ error: "Request has not been prepared" }, 409);
   try {
     const response = await providerFetch(config, `/envelope/${encodeURIComponent(row.providerEnvelopeId)}`);
     if (!response.ok) return respond({ error: "Unable to verify signing status" }, 502);
     const envelope:any = await response.json();
     const providerStatus = String(envelope.status || "");
+    if (row.status === "prepared" && providerStatus === "DRAFT") return respond({ id: row.id, status: "prepared" });
     if (!(["PENDING", "COMPLETED", "REJECTED", "CANCELLED"].includes(providerStatus))) return respond({ error: "Unexpected signing status" }, 502);
     if (providerStatus === "COMPLETED" && !row.signedObjectKey) {
       if (!env.BUCKET || !envelope.envelopeItems?.[0]?.id) return respond({ error: "Signed PDF not available from provider" }, 502);
@@ -114,10 +116,10 @@ export async function POST(request: Request) {
       const sha256 = toHex(await crypto.subtle.digest("SHA-256", bytes));
       const objectKey = `${access.ownerId}/${reference}/signed/${row.id}.pdf`;
       await env.BUCKET.put(objectKey, bytes, { httpMetadata: { contentType: "application/pdf" }, customMetadata: { sha256, sourceDocumentId: row.documentId, sourceSha256: row.documentSha256, providerEnvelopeId: row.providerEnvelopeId } });
-      await env.DB.prepare("UPDATE signature_requests SET status = 'completed', signed_object_key = ?, signed_sha256 = ?, updated_at = ? WHERE id = ? AND status IN ('sent', 'pending')").bind(objectKey, sha256, now, row.id).run();
+      await env.DB.prepare("UPDATE signature_requests SET status = 'completed', signed_object_key = ?, signed_sha256 = ?, updated_at = ? WHERE id = ? AND status IN ('prepared', 'sent', 'pending')").bind(objectKey, sha256, now, row.id).run();
       await audit(access.ownerId, reference, user, "signature_completed_imported", row.id, { sha256, envelopeId: row.providerEnvelopeId }, now);
     } else if (row.status !== "completed") {
-      await env.DB.prepare("UPDATE signature_requests SET status = ?, updated_at = ? WHERE id = ? AND status IN ('sent', 'pending')").bind(providerStatus.toLowerCase(), now, row.id).run();
+      await env.DB.prepare("UPDATE signature_requests SET status = ?, updated_at = ? WHERE id = ? AND status IN ('prepared', 'sent', 'pending')").bind(providerStatus.toLowerCase(), now, row.id).run();
     }
     return respond({ id: row.id, status: providerStatus.toLowerCase() });
   } catch { return respond({ error: "Signing provider unavailable" }, 502); }
