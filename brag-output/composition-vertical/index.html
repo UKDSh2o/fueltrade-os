@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1080, height=1920" />
+<title>FuelTrade OS Brag Vertical</title>
+<script src="assets/lib/gsap.min.js"></script>
+<style>
+  @font-face{font-family:"Manrope";font-weight:700;src:url("assets/fonts/manrope-latin-700-normal.woff2") format("woff2");}
+  @font-face{font-family:"Manrope";font-weight:800;src:url("assets/fonts/manrope-latin-800-normal.woff2") format("woff2");}
+  @font-face{font-family:"DM Sans";font-weight:400;src:url("assets/fonts/dm-sans-latin-400-normal.woff2") format("woff2");}
+  @font-face{font-family:"DM Sans";font-weight:500;src:url("assets/fonts/dm-sans-latin-500-normal.woff2") format("woff2");}
+  @font-face{font-family:"DM Sans";font-weight:600;src:url("assets/fonts/dm-sans-latin-600-normal.woff2") format("woff2");}
+  :root{--bg:#07111f;--panel:#0c1a2b;--line:#1b2d43;--text:#dce7f3;--muted:#8aa0b8;--cyan:#2fd8d0;--green:#36d697;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:"DM Sans",sans-serif;}
+  #root{position:relative;width:100%;height:100%;overflow:hidden;background:var(--bg);}
+  .clip{position:absolute;inset:0;}
+  .inner{position:absolute;inset:0;}
+  .abs{position:absolute;}
+  #grid{position:absolute;left:0;top:-120px;width:1080px;height:2160px;opacity:.9;
+    background-image:linear-gradient(to right,rgba(47,216,208,.07) 2px,transparent 2px),linear-gradient(to bottom,rgba(47,216,208,.07) 2px,transparent 2px);
+    background-size:120px 120px;}
+  #glow{position:absolute;left:540px;top:760px;width:1500px;height:1500px;margin:-750px 0 0 -750px;border-radius:50%;
+    background:radial-gradient(circle,rgba(47,216,208,.22) 0%,rgba(34,169,219,.10) 38%,rgba(7,17,31,0) 68%);}
+  #glow2{position:absolute;left:200px;top:1750px;width:1100px;height:1100px;margin:-550px 0 0 -550px;border-radius:50%;
+    background:radial-gradient(circle,rgba(34,169,219,.16) 0%,rgba(7,17,31,0) 65%);}
+  .eyebrow{font:700 26px "DM Sans";letter-spacing:6px;color:var(--cyan);}
+  .m{font-family:"Manrope",sans-serif;}
+  .panel{background:var(--panel);border:2px solid var(--line);border-radius:26px;box-shadow:0 30px 80px rgba(0,0,0,.45);}
+  .lbl{font:500 28px "DM Sans";color:var(--muted);}
+  /* S1 */
+  .h1{font:800 132px/1.08 "Manrope";color:#fff;white-space:nowrap;letter-spacing:-1px;}
+  .h1 .ch{opacity:0;}
+  .chip{display:flex;align-items:center;justify-content:center;border:2px solid var(--line);background:var(--panel);border-radius:18px;font:700 34px "Manrope";color:#fff;letter-spacing:3px;}
+  .chip small{font:500 22px "DM Sans";color:var(--muted);letter-spacing:2px;display:block;margin-top:2px;}
+  /* S2 */
+  .fld{position:absolute;left:40px;width:860px;height:92px;border:2px solid var(--line);border-radius:16px;background:#091524;}
+  .fld .l{position:absolute;left:26px;top:10px;font:500 22px "DM Sans";color:var(--muted);letter-spacing:1px;}
+  .fld .v{position:absolute;left:26px;top:36px;font:700 40px "Manrope";color:#fff;}
+  .fld .u{position:absolute;right:26px;top:40px;font:500 28px "DM Sans";color:var(--muted);}
+  .cost{position:absolute;left:40px;width:860px;height:54px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--line);font:500 28px "DM Sans";color:var(--text);}
+  .cost b{font:700 30px "Manrope";color:#fff;}
+  #profit{font:800 122px "Manrope";color:var(--green);white-space:nowrap;letter-spacing:-2px;}
+  .mini{position:absolute;top:0;width:280px;}
+  .mini span{display:block;font:500 24px "DM Sans";color:var(--muted);letter-spacing:1px;}
+  .mini b{display:block;margin-top:6px;font:700 40px "Manrope";color:#fff;}
+  .pill{display:flex;align-items:center;justify-content:center;border-radius:999px;font:700 26px "DM Sans";letter-spacing:1px;}
+  /* S3 */
+  .row{position:absolute;left:40px;width:860px;height:88px;border-bottom:2px solid var(--line);}
+  .row .dot{position:absolute;left:0;top:29px;width:30px;height:30px;border-radius:50%;background:#26394f;}
+  .row .name{position:absolute;left:56px;top:22px;font:600 36px "DM Sans";color:#fff;}
+  .st{position:absolute;right:0;top:14px;width:200px;height:60px;}
+  .st .p{position:absolute;inset:0;border:2px solid var(--line);color:var(--muted);}
+  .st .c{position:absolute;inset:0;background:rgba(54,214,151,.16);border:2px solid var(--green);color:var(--green);}
+  /* S4 */
+  #lensrow{position:absolute;left:70px;top:0;width:940px;display:flex;flex-wrap:wrap;justify-content:center;gap:22px;}
+  .lens{border:2px solid var(--line);background:var(--panel);color:#fff;padding:0 34px;height:84px;font:600 34px "DM Sans";border-radius:999px;display:flex;align-items:center;white-space:nowrap;}
+  .mark{width:150px;height:150px;border-radius:38px;background:radial-gradient(circle at 30% 25%,#6cf0e4 0%,#22a9db 100%);box-shadow:0 0 90px rgba(47,216,208,.35);display:flex;align-items:center;justify-content:center;font:800 96px "Manrope";color:#061a21;}
+  .h2{font:800 104px/1.1 "Manrope";color:#fff;white-space:nowrap;letter-spacing:-1px;text-align:center;}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="brag" data-start="0" data-width="1080" data-height="1920" data-duration="21">
+
+  <div id="grid"></div>
+  <div id="glow"></div>
+  <div id="glow2"></div>
+
+  <!-- SCENE 1: hook -->
+  <section id="s1" class="clip" data-start="0" data-duration="4.5" data-track-index="1">
+    <div class="inner" id="s1i">
+      <div class="abs eyebrow" style="left:70px;top:250px;">COMMAND CENTRE  ·  FT-2026-0018</div>
+      <div class="abs h1" id="h1a" style="left:70px;top:330px;">$23.4M of</div>
+      <div class="abs h1" id="h1b" style="left:70px;top:488px;">jet fuel.</div>
+      <div class="abs h1" id="h1c" style="left:70px;top:646px;">One screen.</div>
+      <svg class="abs" style="left:0;top:0;" width="1080" height="1920" viewBox="0 0 1080 1920">
+        <path id="route" d="M 260 1058 C 640 960, 420 1330, 820 1318" fill="none" stroke="#2fd8d0" stroke-width="6" stroke-linecap="round" />
+      </svg>
+      <div class="chip abs" id="chipA" style="left:70px;top:1010px;width:190px;height:96px;flex-direction:column;">FUJ<small>Fujairah</small></div>
+      <div class="chip abs" id="chipB" style="left:820px;top:1270px;width:190px;height:96px;flex-direction:column;">CMB<small>Colombo</small></div>
+      <div class="chip abs" id="chipC" style="left:280px;top:1420px;width:520px;height:84px;font-size:32px;letter-spacing:1px;">25,000 MT  ·  Jet A-1</div>
+    </div>
+  </section>
+
+  <!-- SCENE 2: economics -->
+  <section id="s2" class="clip" data-start="4.2" data-duration="6.6" data-track-index="2">
+    <div class="inner" id="s2i">
+      <div class="abs eyebrow" style="left:70px;top:236px;">TRADE MODEL  ·  FT-2026-0018</div>
+
+      <div class="panel abs" id="pL" style="left:70px;top:300px;width:940px;height:610px;">
+        <div class="abs m" style="left:40px;top:26px;font:700 36px 'Manrope';color:#fff;">Trade model</div>
+        <div class="fld" id="fBuy" style="top:84px;"><div class="l">PURCHASE PRICE</div><div class="v">782</div><div class="u">$/MT</div></div>
+        <div class="fld" id="fSell" style="top:188px;"><div class="l">SALE PRICE</div><div class="v" id="sellv"><span id="sellph" style="position:absolute;left:0;color:#41566d">—</span><span class="sc" id="sc1">9</span><span class="sc" id="sc2">3</span><span class="sc" id="sc3">6</span></div><div class="u">$/MT</div></div>
+        <div class="cost" id="c1" style="top:302px;"><span>Freight</span><b>$48.00</b></div>
+        <div class="cost" id="c2" style="top:356px;"><span>Inspection</span><b>$1.85</b></div>
+        <div class="cost" id="c3" style="top:410px;"><span>Base port charges</span><b>$7.40</b></div>
+        <div class="cost" id="c4" style="top:464px;"><span>Storage</span><b>$4.80</b></div>
+        <div class="cost" id="c5" style="top:518px;border-bottom:none;"><span>Legal</span><b>$0.80</b></div>
+      </div>
+
+      <div class="panel abs" id="pR" style="left:70px;top:925px;width:940px;height:585px;">
+        <div class="abs lbl" style="left:44px;top:34px;font-size:30px;">Net trade profit</div>
+        <div class="abs" id="profit" style="left:44px;top:76px;">$0</div>
+        <div class="abs" id="margtxt" style="left:44px;top:248px;font:700 38px 'Manrope';color:var(--green);">7.55% net margin</div>
+        <div class="abs" style="left:44px;top:312px;width:852px;height:20px;border-radius:10px;background:#091524;border:2px solid var(--line);overflow:hidden;">
+          <div id="mfill" style="width:37.7%;height:100%;background:var(--green);border-radius:10px;transform-origin:left center;"></div>
+        </div>
+        <div class="abs" style="left:44px;top:372px;width:852px;height:100px;">
+          <div class="mini" id="m1" style="left:0;"><span>ROI</span><b>8.16%</b></div>
+          <div class="mini" id="m2" style="left:280px;"><span>UNIT MARGIN</span><b>$70.62</b></div>
+          <div class="mini" id="m3" style="left:580px;"><span>BREAK-EVEN</span><b>$865.38</b></div>
+        </div>
+        <div class="pill abs" id="risk" style="left:44px;top:492px;width:480px;height:70px;background:rgba(54,214,151,.14);border:2px solid var(--green);color:var(--green);font-size:30px;">Risk · Controlled · 18</div>
+      </div>
+
+      <svg class="abs" id="cursor" style="left:0;top:0;" width="48" height="60" viewBox="0 0 48 60"><path d="M4 2 L4 46 L16 35 L24 54 L32 50 L24 32 L40 32 Z" fill="#fff" stroke="#07111f" stroke-width="3" stroke-linejoin="round"/></svg>
+    </div>
+  </section>
+
+  <!-- SCENE 3: control gate -->
+  <section id="s3" class="clip" data-start="10.5" data-duration="6.6" data-track-index="3">
+    <div class="inner" id="s3i">
+      <div class="abs" id="s3title" style="left:70px;top:236px;">
+        <div class="h1" style="font-size:92px;line-height:1.1;">Nothing moves</div>
+        <div class="h1" style="font-size:92px;line-height:1.1;">without sign-off.</div>
+      </div>
+
+      <div class="panel abs" id="gate" style="left:70px;top:500px;width:940px;height:470px;">
+        <div class="abs m" style="left:40px;top:26px;font:700 34px 'Manrope';color:#fff;">Deal control gate</div>
+        <div class="row" id="r1" style="top:90px;"><div class="dot" id="d1"></div><div class="name">Sanctions screening</div><div class="st"><div class="pill p">Pending</div><div class="pill c" id="ok1">Clear</div></div></div>
+        <div class="row" id="r2" style="top:178px;"><div class="dot" id="d2"></div><div class="name">KYC verified</div><div class="st"><div class="pill p">Pending</div><div class="pill c" id="ok2">Clear</div></div></div>
+        <div class="row" id="r3" style="top:266px;"><div class="dot" id="d3"></div><div class="name">Vessel checks</div><div class="st"><div class="pill p">Pending</div><div class="pill c" id="ok3">Clear</div></div></div>
+        <div class="row" id="r4" style="top:354px;border-bottom:none;"><div class="dot" id="d4"></div><div class="name">Insurance cover</div><div class="st"><div class="pill p">Pending</div><div class="pill c" id="ok4">Clear</div></div></div>
+      </div>
+
+      <div class="panel abs" id="chain" style="left:70px;top:1000px;width:940px;height:480px;">
+        <div class="abs m" style="left:40px;top:26px;font:700 34px 'Manrope';color:#fff;">Approval chain</div>
+        <div class="row" id="a1" style="top:90px;"><div class="dot" id="e1"></div><div class="name">Finance</div><div class="st"><div class="pill p">Pending</div><div class="pill c" id="okA1">Approved</div></div></div>
+        <div class="row" id="a2" style="top:178px;border-bottom:none;"><div class="dot" id="e2"></div><div class="name">Legal</div><div class="st"><div class="pill p">Pending</div><div class="pill c" id="okA2">Approved</div></div></div>
+        <div class="pill abs" id="final" style="left:40px;top:292px;width:860px;height:100px;background:rgba(54,214,151,.16);border:2px solid var(--green);color:var(--green);font:800 48px 'Manrope';letter-spacing:0;">Approved</div>
+        <div class="abs lbl" id="finalnote" style="left:40px;top:410px;width:860px;font-size:24px;">Two distinct approvers recorded</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCENE 4: outro -->
+  <section id="s4" class="clip" data-start="16.8" data-duration="4.2" data-track-index="4">
+    <div class="inner" id="s4i">
+      <div class="abs" id="lenses" style="left:0;top:660px;width:1080px;height:300px;">
+        <div id="lensrow">
+          <div class="lens" id="l1">Trader</div><div class="lens" id="l2">Legal</div><div class="lens" id="l3">Vessel captain</div>
+          <div class="lens" id="l4">Port operator</div><div class="lens" id="l5">Finance</div><div class="lens" id="l6">Administrator</div>
+        </div>
+        <div class="abs lbl" id="lenslbl" style="left:0;top:230px;width:1080px;text-align:center;font-size:30px;">One command centre. Six lenses.</div>
+      </div>
+      <div class="mark abs" id="mark" style="left:465px;top:450px;">F</div>
+      <div class="abs" id="endh" style="left:0;top:650px;width:1080px;">
+        <div class="h2">Every approval</div>
+        <div class="h2">on record.</div>
+      </div>
+      <div class="abs" id="endsub" style="left:0;top:910px;width:1080px;text-align:center;font:600 50px 'DM Sans';color:var(--muted);">Make faster decisions.</div>
+      <div class="abs m" id="endname" style="left:0;top:1040px;width:1080px;text-align:center;font:800 40px 'Manrope';color:var(--cyan);letter-spacing:8px;">FUELTRADE OS</div>
+    </div>
+  </section>
+
+  <audio id="music" src="assets/music/happy-beats-business-moves-vol-9-by-ende-dot-app.mp3" data-start="0" data-duration="21" data-track-index="10" data-volume="1" data-automation='{"version":1,"lanes":[{"target":"volume","points":[{"t":0,"v":0},{"t":1,"v":0.42},{"t":19,"v":0.42},{"t":21,"v":0}]}]}'></audio>
+  <audio id="sfx00" src="assets/sfx/keyboard/keypress-003.wav" data-start="0.5" data-duration="0.25" data-track-index="11" data-volume="0.3"></audio>
+  <audio id="sfx01" src="assets/sfx/keyboard/keypress-009.wav" data-start="0.65" data-duration="0.25" data-track-index="12" data-volume="0.3"></audio>
+  <audio id="sfx02" src="assets/sfx/keyboard/keypress-014.wav" data-start="0.8" data-duration="0.25" data-track-index="13" data-volume="0.3"></audio>
+  <audio id="sfx03" src="assets/sfx/keyboard/keypress-021.wav" data-start="0.95" data-duration="0.25" data-track-index="14" data-volume="0.3"></audio>
+  <audio id="sfx04" src="assets/sfx/keyboard/keypress-027.wav" data-start="1.1" data-duration="0.25" data-track-index="15" data-volume="0.3"></audio>
+  <audio id="sfx05" src="assets/sfx/keyboard/keypress-003.wav" data-start="1.25" data-duration="0.25" data-track-index="16" data-volume="0.3"></audio>
+  <audio id="sfx06" src="assets/sfx/keyboard/keypress-009.wav" data-start="1.55" data-duration="0.25" data-track-index="11" data-volume="0.3"></audio>
+  <audio id="sfx07" src="assets/sfx/keyboard/keypress-014.wav" data-start="1.7" data-duration="0.25" data-track-index="12" data-volume="0.3"></audio>
+  <audio id="sfx08" src="assets/sfx/keyboard/keypress-021.wav" data-start="1.85" data-duration="0.25" data-track-index="13" data-volume="0.3"></audio>
+  <audio id="sfx09" src="assets/sfx/impact/impactSoft_medium_001.ogg" data-start="4.23" data-duration="0.18" data-track-index="14" data-volume="0.35"></audio>
+  <audio id="sfx10" src="assets/sfx/interface/click_005.ogg" data-start="5.45" data-duration="0.01" data-track-index="15" data-volume="0.45"></audio>
+  <audio id="sfx11" src="assets/sfx/keyboard/keypress-009.wav" data-start="5.55" data-duration="0.25" data-track-index="16" data-volume="0.35"></audio>
+  <audio id="sfx12" src="assets/sfx/keyboard/keypress-021.wav" data-start="5.71" data-duration="0.25" data-track-index="11" data-volume="0.35"></audio>
+  <audio id="sfx13" src="assets/sfx/keyboard/keypress-003.wav" data-start="5.87" data-duration="0.25" data-track-index="12" data-volume="0.35"></audio>
+  <audio id="sfx14" src="assets/sfx/impact/impactSoft_medium_004.ogg" data-start="6.34" data-duration="0.15" data-track-index="13" data-volume="0.7"></audio>
+  <audio id="sfx15" src="assets/sfx/impact/impactSoft_medium_001.ogg" data-start="10.54" data-duration="0.18" data-track-index="14" data-volume="0.3"></audio>
+  <audio id="sfx16" src="assets/sfx/interface/click_003.ogg" data-start="11.6" data-duration="0.01" data-track-index="15" data-volume="0.55"></audio>
+  <audio id="sfx17" src="assets/sfx/interface/click_003.ogg" data-start="12.65" data-duration="0.01" data-track-index="16" data-volume="0.55"></audio>
+  <audio id="sfx18" src="assets/sfx/interface/click_003.ogg" data-start="13.7" data-duration="0.01" data-track-index="11" data-volume="0.55"></audio>
+  <audio id="sfx19" src="assets/sfx/interface/click_003.ogg" data-start="14.76" data-duration="0.01" data-track-index="12" data-volume="0.55"></audio>
+  <audio id="sfx20" src="assets/sfx/interface/click_002.ogg" data-start="15.28" data-duration="0.01" data-track-index="13" data-volume="0.55"></audio>
+  <audio id="sfx21" src="assets/sfx/interface/click_002.ogg" data-start="15.81" data-duration="0.01" data-track-index="14" data-volume="0.55"></audio>
+  <audio id="sfx22" src="assets/sfx/interface/bong_001.ogg" data-start="15.85" data-duration="0.12" data-track-index="15" data-volume="0.22"></audio>
+  <audio id="sfx23" src="assets/sfx/impact/impactSoft_medium_004.ogg" data-start="18.95" data-duration="0.15" data-track-index="16" data-volume="0.4"></audio>
+</div>
+
+<script>
+var BASS=[0.58,0.62,0.2,0.14,0.14,0.14,0.14,0.13,0.13,0.14,0.14,0.13,0.14,0.14,0.13,0.12,0.65,0.46,0.11,0.11,0.11,0.11,0.12,0.11,0.11,0.11,0.11,0.11,0.11,0.1,0.09,0.2,0.69,0.34,0.09,0.08,0.08,0.08,0.09,0.08,0.09,0.09,0.09,0.1,0.1,0.1,0.1,0.39,0.75,0.27,0.07,0.09,0.09,0.09,0.09,0.09,0.09,0.09,0.1,0.1,0.1,0.07,0.04,0.41,0.53,0.32,0.25,0.25,0.24,0.24,0.23,0.22,0.18,0.17,0.17,0.17,0.16,0.15,0.16,0.66,0.65,0.16,0.1,0.11,0.1,0.08,0.09,0.09,0.08,0.07,0.07,0.07,0.07,0.07,0.2,0.74,0.41,0.05,0.06,0.06,0.06,0.06,0.05,0.06,0.06,0.05,0.06,0.05,0.04,0.04,0.27,0.76,0.31,0.06,0.04,0.05,0.06,0.06,0.07,0.07,0.07,0.08,0.08,0.08,0.08,0.04,0.39,0.55,0.33,0.17,0.15,0.15,0.14,0.14,0.16,0.14,0.12,0.12,0.13,0.12,0.12,0.16,0.58,0.7,0.16,0.08,0.12,0.1,0.11,0.13,0.14,0.11,0.1,0.1,0.11,0.1,0.09,0.04,0.61,0.49,0.12,0.09,0.08,0.08,0.09,0.07,0.1,0.08,0.08,0.08,0.08,0.08,0.08,0.2,0.73,0.42,0.1,0.05,0.07,0.06,0.06,0.05,0.06,0.05,0.05,0.06,0.06,0.06,0.02,0.35,1.0,0.65,0.49,0.5,0.51,0.52,0.53,0.51,0.49,0.46,0.44,0.44,0.44,0.44,0.43,0.57,0.76,0.34,0.31,0.35,0.35,0.35,0.34,0.34,0.33,0.32,0.31,0.31,0.29,0.27,0.27,0.48,0.52,0.15,0.19,0.21,0.21,0.21,0.21,0.22,0.2,0.2,0.2,0.2,0.19,0.18,0.12,0.6,0.44,0.06,0.12,0.13,0.13,0.13,0.14,0.14,0.13,0.13,0.13,0.12,0.1,0.05,0.22,0.8,0.45,0.17,0.15,0.17,0.17,0.17,0.17,0.17,0.18,0.17,0.17,0.16,0.16,0.16,0.28,0.81,0.26,0.12,0.14,0.15,0.14,0.14,0.14,0.14,0.14,0.14,0.14,0.13,0.12,0.12,0.5,0.66,0.22,0.08,0.09,0.1,0.09,0.1,0.1,0.1,0.1,0.1,0.11,0.11,0.11,0.14,0.59,0.62,0.12,0.08,0.08,0.08,0.08,0.08,0.08,0.09,0.09,0.09,0.09,0.08,0.06,0.12,0.84,0.54,0.3,0.36,0.37,0.37,0.36,0.37,0.34,0.33,0.31,0.31,0.3,0.3,0.31,0.31,0.58,0.39,0.27,0.26,0.28,0.27,0.27,0.28,0.28,0.27,0.28,0.27,0.26,0.25,0.25,0.4,0.85,0.34,0.19,0.21,0.23,0.24,0.24,0.25,0.24,0.24,0.24,0.25,0.25,0.24,0.24,0.56,0.52,0.15,0.18,0.21,0.21,0.2,0.21,0.21,0.21,0.21,0.2,0.2,0.19,0.13,0.05,0.7,0.48,0.19,0.14,0.13,0.12,0.13,0.12,0.13,0.11,0.11,0.1,0.1,0.09,0.09,0.22,0.72,0.46,0.1,0.06,0.08,0.07,0.07,0.07,0.07,0.05,0.07,0.06,0.05,0.05,0.05,0.25,0.73,0.33,0.02,0.04,0.04,0.04,0.04,0.04,0.04,0.03,0.04,0.04,0.04,0.04,0.03,0.35,0.71,0.2,0.04,0.03,0.03,0.03,0.03,0.03,0.02,0.02,0.03,0.03,0.02,0.02,0.03,0.52,0.54,0.44,0.61,0.64,0.67,0.71,0.77,0.71,0.61,0.57,0.55,0.52,0.51,0.5,0.41,0.28,0.24,0.23,0.21,0.19,0.17,0.16,0.15,0.13,0.11,0.1,0.09,0.08,0.06,0.06,0.04,0.03,0.02,0.02,0.02,0.01,0.01,0.02,0.01,0.01,0.02,0.01,0.01,0.01,0.0,0.0,0.01,0.01,0.02,0.01,0.02,0.02,0.01,0.02,0.06,0.04,0.02,0.03,0.02,0.04,0.04,0.04,0.51,0.67,0.46,0.4,0.4,0.38,0.37,0.35,0.27,0.3,0.29,0.27,0.28,0.27,0.25,0.21,0.53,0.75,0.31,0.25,0.25,0.25,0.25,0.24,0.2,0.25,0.28,0.26,0.24,0.24,0.23,0.24,0.68,0.5,0.4,0.33,0.32,0.34,0.34,0.3,0.29,0.33,0.32,0.32,0.32,0.3,0.3,0.29,0.69,0.52,0.35,0.36,0.37,0.37,0.35,0.23,0.25,0.32,0.32,0.32,0.32,0.3,0.28,0.39,0.72,0.13,0.3,0.33,0.33,0.33,0.34,0.3,0.54,0.46,0.43,0.42,0.4,0.42,0.4,0.73,0.79,0.13,0.29,0.34,0.33,0.33,0.3,0.26,0.56,0.5,0.5,0.47,0.47,0.45,0.4,0.56,0.41,0.26,0.4,0.44,0.47,0.48,0.47,0.59,0.51,0.44,0.45,0.42,0.42,0.42,0.47,0.81,0.36,0.15,0.25,0.26,0.27,0.27,0.32,0.58,0.55,0.54,0.53,0.52,0.49];
+(function(){
+  var tl = gsap.timeline({ paused: true });
+  var E = "power3.out";
+
+  tl.to("#grid", { y: 120, duration: 21, ease: "none" }, 0);
+  tl.fromTo("#glow2", { opacity: .5 }, { opacity: 1, duration: 21, ease: "sine.inOut" }, 0);
+  var glow = document.getElementById("glow");
+  for (var f = 0; f < BASS.length; f++) {
+    tl.call((function (b) { return function () {
+      glow.style.opacity = (0.62 + 0.30 * b).toFixed(3);
+      glow.style.transform = "scale(" + (1 + 0.05 * b).toFixed(4) + ")";
+    }; })(BASS[f]), [], f / 30);
+  }
+
+  function split(id) {
+    var el = document.getElementById(id), txt = el.textContent; el.textContent = "";
+    var out = [];
+    for (var i = 0; i < txt.length; i++) {
+      var s = document.createElement("span"); s.className = "ch"; s.textContent = txt[i];
+      el.appendChild(s); out.push(s);
+    }
+    return out;
+  }
+  function typeIn(chars, t0, step) { chars.forEach(function (c, i) { tl.set(c, { opacity: 1 }, t0 + i * step); }); }
+
+  /* scene 1 (0 - 4.5) */
+  tl.fromTo("#s1i", { opacity: 0 }, { opacity: 1, duration: .5, ease: "none" }, 0);
+  typeIn(split("h1a"), 0.50, 0.05);    // 9 chars  -> 0.95
+  typeIn(split("h1b"), 1.00, 0.05);    // 9 chars  -> 1.45
+  typeIn(split("h1c"), 1.55, 0.05);    // 11 chars -> 2.10
+  tl.fromTo("#chipA", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: .5, ease: E }, 0.15);
+  tl.fromTo("#chipB", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: .5, ease: E }, 1.45);
+  (function () {
+    var p = document.getElementById("route"), L = p.getTotalLength();
+    p.style.strokeDasharray = L; p.style.strokeDashoffset = L;
+    tl.to(p, { strokeDashoffset: 0, duration: 1.5, ease: "power2.inOut" }, 0.1);
+  })();
+  tl.fromTo("#chipC", { opacity: 0, scale: .94 }, { opacity: 1, scale: 1, duration: .5, ease: "back.out(1.6)" }, 1.7);
+  tl.to("#s1i", { opacity: 0, duration: .3, ease: "none" }, 3.95);
+
+  /* scene 2 (4.2 - 10.8) */
+  tl.fromTo("#s2i", { opacity: 0 }, { opacity: 1, duration: .3, ease: "none" }, 4.2);
+  tl.fromTo("#pL", { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: .7, ease: E }, 4.23);   // beat-locked: 4.23s
+  tl.fromTo("#pR", { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: .7, ease: E }, 4.4);
+  ["c1","c2","c3","c4","c5"].forEach(function (id, i) {
+    tl.fromTo("#" + id, { opacity: 0, x: -36 }, { opacity: 1, x: 0, duration: .45, ease: E }, 5.0 + i * 0.12);
+  });
+  tl.set("#cursor", { opacity: 0 }, 4.2);
+  tl.fromTo("#cursor", { x: 860, y: 1100, opacity: 0 }, { x: 520, y: 520, opacity: 1, duration: .75, ease: "power2.inOut" }, 4.75);
+  tl.to("#cursor", { scale: .82, transformOrigin: "4px 2px", duration: .09, yoyo: true, repeat: 1 }, 5.45);
+  tl.to("#fSell", { borderColor: "#2fd8d0", boxShadow: "0 0 0 6px rgba(47,216,208,.18)", duration: .2 }, 5.45);
+  tl.to("#sellph", { opacity: 0, duration: .08 }, 5.5);
+  ["sc1","sc2","sc3"].forEach(function (id, i) { tl.set("#" + id, { opacity: 1 }, 5.55 + i * 0.16); });
+  tl.set(".sc", { opacity: 0 }, 0);
+  tl.to("#cursor", { opacity: 0, duration: .3 }, 6.05);
+  tl.to("#fSell", { borderColor: "#1b2d43", boxShadow: "0 0 0 0 rgba(47,216,208,0)", duration: .3 }, 6.1);
+  var P = { v: 0 };
+  function money(n) { return "$" + String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+  tl.to(P, { v: 1765552, duration: 1.6, ease: "power2.out", onUpdate: function () { document.getElementById("profit").textContent = money(P.v); } }, 6.34);   // beat-locked: 6.34s
+  tl.fromTo("#mfill", { scaleX: 0 }, { scaleX: 1, duration: 1.5, ease: "power2.out" }, 6.4);
+  tl.fromTo("#margtxt", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: .5, ease: E }, 7.7);
+  tl.fromTo("#m1", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: .45, ease: E }, 8.1);
+  tl.fromTo("#m2", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: .45, ease: E }, 8.3);
+  tl.fromTo("#m3", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: .45, ease: E }, 8.5);
+  tl.fromTo("#risk", { opacity: 0, scale: .9 }, { opacity: 1, scale: 1, duration: .5, ease: "back.out(1.8)" }, 8.8);
+  tl.to("#s2i", { opacity: 0, duration: .4, ease: "none" }, 10.4);
+
+  /* scene 3 (10.5 - 17.1) */
+  tl.fromTo("#s3i", { opacity: 0 }, { opacity: 1, duration: .35, ease: "none" }, 10.5);
+  tl.fromTo("#s3title", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: .7, ease: E }, 10.54);   // beat-locked: 10.54s
+  tl.fromTo("#gate", { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: .7, ease: E }, 10.8);
+  tl.fromTo("#chain", { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: .7, ease: E }, 10.95);
+  tl.set(".st .c", { opacity: 0 }, 0);
+  // beat-grid (every other beat): 11.60, 12.65, 13.70, 14.76
+  [["ok1","d1","r1",11.60],["ok2","d2","r2",12.65],["ok3","d3","r3",13.70],["ok4","d4","r4",14.76]].forEach(function (a) {
+    tl.fromTo("#" + a[0], { opacity: 0, scale: .85 }, { opacity: 1, scale: 1, duration: .35, ease: "back.out(2)" }, a[3]);
+    tl.to("#" + a[2] + " .p", { opacity: 0, duration: .15 }, a[3]);
+    tl.to("#" + a[1], { backgroundColor: "#36d697", duration: .25 }, a[3]);
+  });
+  // approvals: 15.28, 15.81
+  [["okA1","e1","a1",15.28],["okA2","e2","a2",15.81]].forEach(function (a) {
+    tl.fromTo("#" + a[0], { opacity: 0, scale: .85 }, { opacity: 1, scale: 1, duration: .35, ease: "back.out(2)" }, a[3]);
+    tl.to("#" + a[2] + " .p", { opacity: 0, duration: .15 }, a[3]);
+    tl.to("#" + a[1], { backgroundColor: "#36d697", duration: .25 }, a[3]);
+  });
+  tl.set("#final", { opacity: 0 }, 0);
+  tl.set("#finalnote", { opacity: 0 }, 0);
+  tl.fromTo("#final", { opacity: 0, scale: .94 }, { opacity: 1, scale: 1, duration: .5, ease: "back.out(1.6)" }, 15.85);
+  tl.fromTo("#finalnote", { opacity: 0 }, { opacity: 1, duration: .4 }, 16.1);
+  tl.to("#s3i", { opacity: 0, duration: .4, ease: "none" }, 16.75);
+
+  /* scene 4 (16.8 - 21.0) */
+  tl.fromTo("#s4i", { opacity: 0 }, { opacity: 1, duration: .3, ease: "none" }, 16.8);
+  ["l1","l2","l3","l4","l5","l6"].forEach(function (id, i) {
+    tl.fromTo("#" + id, { opacity: 0, y: 36 }, { opacity: 1, y: 0, duration: .45, ease: E }, 17.1 + i * 0.08);
+  });
+  tl.fromTo("#lenslbl", { opacity: 0 }, { opacity: 1, duration: .4 }, 17.55);
+  tl.to("#lenses", { opacity: 0, duration: .25, ease: "none" }, 18.55);
+  tl.set("#mark", { opacity: 0 }, 0); tl.set("#endh", { opacity: 0 }, 0); tl.set("#endsub", { opacity: 0 }, 0); tl.set("#endname", { opacity: 0 }, 0);
+  tl.fromTo("#mark", { opacity: 0, scale: .8 }, { opacity: 1, scale: 1, duration: .6, ease: "back.out(1.7)" }, 18.8);
+  tl.fromTo("#endh", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: .6, ease: E }, 18.95);
+  tl.fromTo("#endsub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: .5, ease: E }, 19.55);
+  tl.fromTo("#endname", { opacity: 0 }, { opacity: 1, duration: .5 }, 19.8);
+
+  window.__timelines["brag"] = tl;
+})();
+</script>
+</body>
+</html>
