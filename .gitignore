@@ -47,3 +47,6 @@ next-env.d.ts
 /work/
 /tsconfig.tsbuildinfo
 /fueltrade-*.tar.gz
+
+# dummy-mode UI smoke screenshots
+/dummy/.screenshots

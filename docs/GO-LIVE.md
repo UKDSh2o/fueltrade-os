@@ -27,9 +27,10 @@ pnpm install --frozen-lockfile
 pnpm build
 pnpm test:e2e        # starts the mock providers and the real built app, runs every scenario
 pnpm dummy:mock      # optional: run only the mock server on 127.0.0.1:8799
+pnpm test:ui         # optional, local: browser smoke test; needs Playwright, which is not a repo dependency
 ```
 
-`GET /api/providers` (signed in) reports each integration as `dummy`, `live` or `unconfigured`, lists missing variable names and warns when dummy mode is on. It never returns a value.
+While dummy mode is on, the main page shows a red "DUMMY MODE" banner. `GET /api/providers` (signed in) reports each integration as `dummy`, `live` or `unconfigured`, lists missing variable names and warns when dummy mode is on. It never returns a value.
 
 ## Dummy access
 

@@ -1,19 +1,11 @@
 // End-to-end dummy-mode run: boots the dummy providers and the real built app, then exercises it as several dummy users.
 // Usage: pnpm build && pnpm test:e2e        (nothing real is contacted; see docs/GO-LIVE.md)
-import { spawn, spawnSync } from 'node:child_process';
-import { mkdtempSync, readdirSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import crypto from 'node:crypto';
-import { fileURLToPath } from 'node:url';
-import { createMockProviders } from './mock-providers.mjs';
-import { dummyVariables } from '../lib/providers.js';
+import { startStack } from './harness.mjs';
 import { USERS, headersFor } from './users.mjs';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const APP_PORT = Number(process.env.E2E_APP_PORT || 8788), MOCK_PORT = Number(process.env.E2E_MOCK_PORT || 8799);
 const APP = `http://127.0.0.1:${APP_PORT}`, MOCK = `http://127.0.0.1:${MOCK_PORT}`;
-const wrangler = ['--import', './scripts/sites-env.mjs', './node_modules/wrangler/bin/wrangler.js'];
 
 const results = [];
 let current = '';
@@ -40,12 +32,6 @@ async function step(name, fn) {
 
 function minimalPdf(label) {
   return new File([`%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\n%${label}\ntrailer<</Root 1 0 R>>\n%%EOF\n`], `${label}.pdf`, { type: 'application/pdf' });
-}
-
-async function waitFor(url, ms = 60000) {
-  const end = Date.now() + ms;
-  while (Date.now() < end) { try { const r = await fetch(url); if (r.status < 500) return; } catch {} await new Promise(r => setTimeout(r, 500)); }
-  throw new Error(`Timed out waiting for ${url}`);
 }
 
 const REF = 'DUMMY-0001';
@@ -349,26 +335,12 @@ async function scenarios() {
 const failed = () => results.filter(r => !r.ok);
 
 async function main() {
-  const stateDir = mkdtempSync(path.join(tmpdir(), 'fueltrade-e2e-'));
-  const { server } = createMockProviders();
-  await new Promise(resolve => server.listen(MOCK_PORT, '127.0.0.1', resolve));
-  console.log(`Dummy providers on ${MOCK}; app state in ${stateDir}`);
-  let app;
+  const stack = await startStack({ appPort: APP_PORT, mockPort: MOCK_PORT });
+  console.log(`Dummy providers on ${stack.mockUrl}; app state in ${stack.stateDir}`);
   try {
-    console.log('Applying migrations to a fresh local D1...');
-    for (const file of readdirSync(path.join(root, 'drizzle')).filter(f => f.endsWith('.sql')).sort()) {
-      const r = spawnSync('node', [...wrangler, 'd1', 'execute', 'DB', '--local', '--config', 'dist/server/wrangler.json', '--persist-to', stateDir, '--file', `drizzle/${file}`], { cwd: root, encoding: 'utf8' });
-      if (r.status !== 0) throw new Error(`Migration ${file} failed:\n${r.stdout}\n${r.stderr}`);
-    }
-    const vars = Object.entries(dummyVariables(MOCK)).flatMap(([k, v]) => ['--var', `${k}:${v}`]);
-    app = spawn('node', [...wrangler, 'dev', '--config', 'dist/server/wrangler.json', '--local', '--persist-to', stateDir, '--ip', '127.0.0.1', '--port', String(APP_PORT), '--inspector-port', '0', ...vars], { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] });
-    let appLog = ''; app.stdout.on('data', d => { appLog += d; }); app.stderr.on('data', d => { appLog += d; });
-    await waitFor(`${APP}/api/providers`);
     await scenarios();
-    if (failed().length) console.log('\nApp log tail:\n' + appLog.split('\n').slice(-25).join('\n'));
-  } finally {
-    app?.kill('SIGTERM'); server.close();
-  }
+    if (failed().length) console.log('\nApp log tail:\n' + stack.log().split('\n').slice(-25).join('\n'));
+  } finally { stack.stop(); }
   console.log(`\n${results.length - failed().length}/${results.length} passed`);
   process.exit(failed().length ? 1 : 0);
 }
