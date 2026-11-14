@@ -3,6 +3,7 @@ import { env } from "cloudflare:workers";
 import { getChatGPTUser } from "../../chatgpt-auth";
 import { requireTradePermission } from "../../access-control";
 import { buildScreeningQuery, summarizeScreeningResponse } from "../../../lib/due-diligence.js";
+import { providerUrlAllowed, isDummyTarget } from "../../../lib/providers.js";
 
 const respond = (body: unknown, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 const clean = (value: unknown, max = 240) => String(value ?? "").trim().slice(0, max);
@@ -88,7 +89,7 @@ export async function POST(request: Request) {
     if (!baseValue) return respond({ error: "OpenSanctions or a self-hosted yente endpoint is not configured" }, 409);
     let base: URL;
     try { base = new URL(baseValue); } catch { return respond({ error: "Screening endpoint configuration is invalid" }, 503); }
-    if (base.protocol !== "https:") return respond({ error: "Screening endpoint must use HTTPS" }, 503);
+    if (!providerUrlAllowed(base.href, settings)) return respond({ error: "Screening endpoint must use HTTPS" }, 503);
     query = buildScreeningQuery({ name: subjectName, country: subjectCountry, schema: checkType === "vessel" ? "Vessel" : clean(body.schema, 40) || "Company" });
     const headers: Record<string, string> = { "content-type": "application/json", "user-agent": "FuelTrade-OS/1.0" };
     if (settings.OPEN_SANCTIONS_API_KEY) headers.authorization = `ApiKey ${settings.OPEN_SANCTIONS_API_KEY}`;
@@ -100,7 +101,7 @@ export async function POST(request: Request) {
     }
     if (!screeningResponse.ok) return respond({ error: `Screening provider rejected the request (${screeningResponse.status})` }, 502);
     const summary = summarizeScreeningResponse(await screeningResponse.json());
-    provider = base.hostname === "api.opensanctions.org" ? "opensanctions" : "yente_self_hosted";
+    provider = isDummyTarget(base.href, settings) ? "dummy" : base.hostname === "api.opensanctions.org" ? "opensanctions" : "yente_self_hosted";
     riskLevel = summary.riskLevel;
     result = summary;
     const topId = summary.matches[0]?.id;

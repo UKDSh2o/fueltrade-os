@@ -26,6 +26,8 @@ These are models and records; they do not independently verify a counterparty, p
 5. **Market intelligence and AI:** lawful data-source agreements, quote provenance and freshness, role-scoped Copilot retrieval, audit and human approval for consequential automation. Licensed price feeds need subscription rights.
 6. **Deployment operations:** stable-checkpoint CI now runs locked installation, control tests, migration-drift detection and the production build. Backups, monitoring, rate limiting, retention policy, recovery exercises and automated Site/GitHub tree-parity checks remain.
 
+A dummy-provider end-to-end run (`pnpm test:e2e`, see `docs/GO-LIVE.md`) now exercises permissions, documents, e-signature lifecycle, screening, tracking, communications, finance controls and notifications against simulated services. That validates our own code and adapter shapes; it does not count as a deployed test against a real provider.
+
 Each entry moves to “live” only after an end-to-end deployed test. The `UKDSh2o/fueltrade-os` GitHub repository is the public code checkpoint; never put actual transactions or secrets there.
 
 ## Platform comparison (September 2026)

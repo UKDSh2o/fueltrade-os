@@ -45,3 +45,6 @@ jobs:
 
       - name: Build production worker
         run: pnpm build
+
+      - name: End-to-end run against dummy providers
+        run: pnpm test:e2e

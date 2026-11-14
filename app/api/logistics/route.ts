@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { getChatGPTUser } from "../../chatgpt-auth";
 import { requireTradePermission } from "../../access-control";
 import { handoffDecision, isValidImo, normalizeImo, normalizePosition } from "../../../lib/logistics-controls.js";
+import { providerUrlAllowed, isDummyTarget } from "../../../lib/providers.js";
 
 const respond = (body: unknown, status = 200) => Response.json(body, { status });
 const clean = (value: unknown, max = 160) => String(value ?? "").trim().slice(0, max);
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
     if (!baseUrl) return respond({ error: "A vessel tracking provider has not been configured" }, 409);
     let configured: URL;
     try { configured = new URL(baseUrl); } catch { return respond({ error: "The configured tracking endpoint is invalid" }, 503); }
-    if (configured.protocol !== "https:") return respond({ error: "The tracking provider must use HTTPS" }, 503);
+    if (!providerUrlAllowed(configured.href, env)) return respond({ error: "The tracking provider must use HTTPS" }, 503);
     const voyage = await env.DB.prepare(`SELECT id, imo FROM voyages WHERE owner_id = ? AND trade_reference = ? ORDER BY updated_at DESC LIMIT 1`).bind(access.ownerId, reference).first<any>();
     if (!voyage || !isValidImo(voyage.imo)) return respond({ error: "Save a vessel with a valid IMO number first" }, 409);
     configured.searchParams.set("imo", voyage.imo);
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
       const response = await fetch(configured, { headers: (env as any).VESSEL_TRACKING_API_KEY ? { Authorization: `Bearer ${(env as any).VESSEL_TRACKING_API_KEY}` } : {}, signal: controller.signal });
       if (!response.ok) return respond({ error: "The tracking provider did not return a usable position" }, 502);
       const payload = await response.json() as any;
-      return storePosition(user, access.ownerId, reference, { ...payload, ...(payload.position || {}), sourceUrl: configured.origin }, "provider");
+      return storePosition(user, access.ownerId, reference, { ...payload, ...(payload.position || {}), sourceUrl: configured.origin }, isDummyTarget(configured.href, env) ? "dummy" : "provider");
     } catch { return respond({ error: "The tracking provider could not be reached" }, 502); }
     finally { clearTimeout(timeout); }
   }

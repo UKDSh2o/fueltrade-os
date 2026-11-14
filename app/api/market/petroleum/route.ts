@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { dummyEnabled } from "../../../../lib/providers.js";
 import { getChatGPTUser } from "../../../chatgpt-auth";
 
 const API_ROOT = "https://api.eia.gov/v2";
@@ -7,7 +8,8 @@ type EiaRow = { period?: string; series?: string; seriesDescription?: string; va
 
 async function eia(path: string, key: string) {
   const separator = path.includes("?") ? "&" : "?";
-  const response = await fetch(`${API_ROOT}${path}${separator}api_key=${encodeURIComponent(key)}`, { headers: { accept: "application/json" } });
+  const root = dummyEnabled(env) && (env as any).EIA_API_ROOT ? String((env as any).EIA_API_ROOT) : API_ROOT;
+  const response = await fetch(`${root}${path}${separator}api_key=${encodeURIComponent(key)}`, { headers: { accept: "application/json" } });
   if (!response.ok) throw new Error(`EIA returned ${response.status}`);
   return response.json() as Promise<any>;
 }

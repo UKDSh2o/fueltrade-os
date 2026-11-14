@@ -1,4 +1,6 @@
 import { getChatGPTUser } from "../../chatgpt-auth";
+import { dummyEnabled } from "../../../lib/providers.js";
+import { env } from "cloudflare:workers";
 import { crossRate, parseEcbDailyXml } from "../../../lib/fx-reference.js";
 
 const ECB_DAILY = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml";
@@ -7,7 +9,8 @@ export async function GET() {
   const user = await getChatGPTUser();
   if (!user) return Response.json({ error: "Sign in required" }, { status: 401 });
   try {
-    const response = await fetch(ECB_DAILY, { headers: { accept: "application/xml" } });
+    const ecbUrl = dummyEnabled(env) && (env as any).ECB_DAILY_URL ? String((env as any).ECB_DAILY_URL) : ECB_DAILY;
+    const response = await fetch(ecbUrl, { headers: { accept: "application/xml" } });
     if (!response.ok) throw new Error(`ECB returned ${response.status}`);
     const xml = await response.text();
     const { asOf, rates } = parseEcbDailyXml(xml);

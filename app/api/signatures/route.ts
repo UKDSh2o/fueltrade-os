@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { getChatGPTUser } from "../../chatgpt-auth";
 import { requireTradePermission } from "../../access-control";
 import { validSigner, providerConfig, envelopePayload } from "../../../lib/signature-controls.js";
+import { dummyEnabled } from "../../../lib/providers.js";
 
 const respond = (body: unknown, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 const refOf = (v: unknown) => typeof v === "string" && /^[\w-]{3,64}$/.test(v) ? v : null;
@@ -9,7 +10,9 @@ const settings = env as unknown as Record<string, string>;
 const toHex = (buffer: ArrayBuffer) => [...new Uint8Array(buffer)].map(v => v.toString(16).padStart(2, "0")).join("");
 type SignatureRow = { id:string; documentId:string; documentSha256:string; signerEmail:string; signerName:string; status:string; providerEnvelopeId:string|null; signedObjectKey:string|null; signedSha256:string|null; createdAt:number };
 async function providerFetch(config: {base:string;token:string}, path: string, init?: RequestInit) {
-  return fetch(`${config.base}${path}`, { ...init, headers: { Authorization: config.token, ...(init?.headers || {}) }, redirect: "error", signal: AbortSignal.timeout(15000) });
+  // Workers do not support redirect:"error", so refuse to follow redirects and treat any 3xx as a failed provider call.
+  const response = await fetch(`${config.base}${path}`, { ...init, headers: { Authorization: config.token, ...(init?.headers || {}) }, redirect: "manual", signal: AbortSignal.timeout(15000) });
+  return response.status >= 300 && response.status < 400 ? new Response(null, { status: 502 }) : response;
 }
 
 export async function GET(request: Request) {
@@ -85,7 +88,7 @@ export async function POST(request: Request) {
       if (!updated.meta.changes) return respond({ error: "Draft changed while preparing; inspect provider for duplicate envelope" }, 409);
       await audit(access.ownerId, reference, user, "signature_prepared", row.id, { envelopeId }, now);
       return respond({ id: row.id, status: "prepared" });
-    } catch { return respond({ error: "Signing provider unavailable; inspect provider before retrying" }, 502); }
+    } catch (error:any) { console.error("signature provider fetch failed", error?.name, error?.message); return respond({ error: "Signing provider unavailable; inspect provider before retrying" }, 502); }
   }
   if (!row.providerEnvelopeId) return respond({ error: "Prepare the request first" }, 409);
   if (action === "send") {
@@ -115,9 +118,9 @@ export async function POST(request: Request) {
       if (bytes.byteLength < 5 || bytes.byteLength > 15*1024*1024 || new TextDecoder().decode(bytes.slice(0,5)) !== "%PDF-") return respond({ error: "Invalid signed PDF response" }, 502);
       const sha256 = toHex(await crypto.subtle.digest("SHA-256", bytes));
       const objectKey = `${access.ownerId}/${reference}/signed/${row.id}.pdf`;
-      await env.BUCKET.put(objectKey, bytes, { httpMetadata: { contentType: "application/pdf" }, customMetadata: { sha256, sourceDocumentId: row.documentId, sourceSha256: row.documentSha256, providerEnvelopeId: row.providerEnvelopeId } });
+      await env.BUCKET.put(objectKey, bytes, { httpMetadata: { contentType: "application/pdf" }, customMetadata: { sha256, sourceDocumentId: row.documentId, sourceSha256: row.documentSha256, providerEnvelopeId: row.providerEnvelopeId, ...(dummyEnabled(settings) ? { dummy: "true" } : {}) } });
       await env.DB.prepare("UPDATE signature_requests SET status = 'completed', signed_object_key = ?, signed_sha256 = ?, updated_at = ? WHERE id = ? AND status IN ('prepared', 'sent', 'pending')").bind(objectKey, sha256, now, row.id).run();
-      await audit(access.ownerId, reference, user, "signature_completed_imported", row.id, { sha256, envelopeId: row.providerEnvelopeId }, now);
+      await audit(access.ownerId, reference, user, "signature_completed_imported", row.id, { sha256, envelopeId: row.providerEnvelopeId, ...(dummyEnabled(settings) ? { dummy: true, note: "Simulated signature; not legally effective" } : {}) }, now);
     } else if (row.status !== "completed") {
       await env.DB.prepare("UPDATE signature_requests SET status = ?, updated_at = ? WHERE id = ? AND status IN ('prepared', 'sent', 'pending')").bind(providerStatus.toLowerCase(), now, row.id).run();
     }
