@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { env } from "cloudflare:workers";
 import { getChatGPTUser } from "../../chatgpt-auth";
-import { buildSafeDraft, classifyMessage, connectionCatalog, normalizeChannel, normalizeParticipants, safeConnector, canAccessThread, prepareThreadParticipants } from "../../../lib/communications.js";
+import { buildSafeDraft, classifyMessage, connectionCatalog, normalizeChannel, safeConnector, canAccessThread, prepareThreadParticipants } from "../../../lib/communications.js";
 import { normalizeChatwootConversationId } from "../../../lib/chatwoot-webhook.js";
 import { requireTradePermission } from "../../access-control";
 
@@ -186,7 +186,6 @@ export async function POST(request: Request) {
       env.DB.prepare("UPDATE communication_threads SET priority = ?, priority_reason = ?, last_message_at = ?, updated_at = ? WHERE id = ? AND owner_id = ?").bind(insight.priority, insight.reason, now, now, threadId, access.ownerId),
     ];
     if (insight.priority !== "normal") {
-      const recipients = JSON.parse(thread.participantsJson || "[]");
       statements.push(env.DB.prepare("INSERT INTO notification_events (id, owner_id, trade_reference, event_key, category, severity, title, message, target, status, read_at, last_seen_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(crypto.randomUUID(), access.ownerId, reference, `communication:${id}`, "communications", insight.priority === "urgent" ? "critical" : "high", `${insight.priority === "urgent" ? "Urgent" : "Priority"} message: ${thread.subject}`, message.slice(0, 300), "deal-room", "active", null, now, now));
     }
     await env.DB.batch(statements);
@@ -209,7 +208,6 @@ export async function POST(request: Request) {
       env.DB.prepare("UPDATE communication_threads SET priority = ?, priority_reason = ?, last_message_at = ?, updated_at = ? WHERE id = ? AND owner_id = ?").bind(insight.priority, insight.reason, now, now, threadId, access.ownerId),
     ];
     if (insight.priority !== "normal") {
-      const recipients = JSON.parse(thread.participantsJson || "[]");
       statements.push(env.DB.prepare("INSERT INTO notification_events (id, owner_id, trade_reference, event_key, category, severity, title, message, target, status, read_at, last_seen_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(crypto.randomUUID(), access.ownerId, reference, `communication:${id}`, "communications", insight.priority === "urgent" ? "critical" : "high", `${insight.priority === "urgent" ? "Urgent" : "Priority"} test email: ${thread.subject}`, message.slice(0, 300), "deal-room", "active", null, now, now));
     }
     await env.DB.batch(statements);

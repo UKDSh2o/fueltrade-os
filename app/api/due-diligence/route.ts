@@ -73,7 +73,7 @@ export async function POST(request: Request) {
 
   let provider = "manual";
   let riskLevel = manualRisk.has(body.riskLevel) ? body.riskLevel : "unrated";
-  let status = "pending_review";
+  const status = "pending_review";
   let query: Record<string, unknown> = {};
   let result: Record<string, unknown> = { note: clean(body.note, 1000) };
   let evidenceUrl = clean(body.evidenceUrl, 600) || null;
